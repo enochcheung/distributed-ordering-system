@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<project name="hw1" default="supplier1" basedir=".">
+<project name="hw1" default="jar" basedir=".">
 	<property name="build.dir" value="build" />
 	<property name="main.build.dir" value="${build.dir}/main" />
 	<property name="main.src.dir" value="src" />
@@ -32,6 +32,40 @@
 		<echo message="build done" />
 	</target>
 
+	<target name="jar" depends="compile">
+		<jar destfile="Supplier1Server.jar" filesetmanifest="mergewithoutmain">
+					<manifest>
+						<attribute name="Main-Class" value="${supplier1.class}" />
+						<attribute name="Class-Path" value="." />
+					</manifest>
+					<fileset dir="${main.build.dir}" />
+					<zipfileset excludes="META-INF/*.SF" src="lib/hamcrest-core-1.3.jar" />
+					<zipfileset excludes="META-INF/*.SF" src="lib/junit-4.11.jar" />
+					<zipfileset excludes="META-INF/*.SF" src="lib/json-simple-1.1.1.jar" />
+				</jar>
+		
+		<jar destfile="Supplier2Server.jar" filesetmanifest="mergewithoutmain">
+					<manifest>
+						<attribute name="Main-Class" value="${supplier2.class}" />
+						<attribute name="Class-Path" value="." />
+					</manifest>
+					<fileset dir="${main.build.dir}" />
+					<zipfileset excludes="META-INF/*.SF" src="lib/hamcrest-core-1.3.jar" />
+					<zipfileset excludes="META-INF/*.SF" src="lib/junit-4.11.jar" />
+					<zipfileset excludes="META-INF/*.SF" src="lib/json-simple-1.1.1.jar" />
+				</jar>
+		
+		<jar destfile="OrderingSystem.jar" filesetmanifest="mergewithoutmain">
+			<manifest>
+				<attribute name="Main-Class" value="${orderingsystem.class}" />
+				<attribute name="Class-Path" value="." />
+			</manifest>
+			<fileset dir="${main.build.dir}" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/hamcrest-core-1.3.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/junit-4.11.jar" />
+			<zipfileset excludes="META-INF/*.SF" src="lib/json-simple-1.1.1.jar" />
+		</jar>
+	</target>
 
 	<target name="dist" depends="compile" description="generate the distribution">
 		<!-- Create the distribution directory -->

@@ -18,6 +18,13 @@ public interface SupplierInterface extends Remote {
 	 * @throws RemoteException
 	 */
 	public String lookup(String itemNumber) throws RemoteException;
+	
+	/**
+	 * @param itemNumber
+	 * @return Bike object
+	 * @throws RemoteException
+	 */
+	public Bike lookupBike(String itemNumber) throws RemoteException;
 
 	public String lookupName(String itemNumber) throws RemoteException;
 

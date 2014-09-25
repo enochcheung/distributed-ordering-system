@@ -98,6 +98,11 @@ public class Supplier extends UnicastRemoteObject implements SupplierInterface {
 	}
 
 	@Override
+	public Bike lookupBike(String itemNumber) throws RemoteException {
+		return inventory.get(itemNumber);
+	}
+	
+	@Override
 	public String lookupName(String itemNumber) throws RemoteException{
 		return inventory.get(itemNumber).getName();
 	};
