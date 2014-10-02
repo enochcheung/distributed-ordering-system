@@ -101,13 +101,17 @@ public class CustomerDB {
 		JSONObject jsonInfo = (JSONObject) database.get(customerID);
 		CustomerInfo customerInfo = new CustomerInfo(jsonInfo);
 
-		return customerInfo.shippingInfo();
+		return customerInfo.getCustomerAddress().toString();
 
 	}
 
+    /**
+     * @return List of customers
+     */
 	public List<String> listCustomers() {
 		return new ArrayList<String>(database.keySet());
 	}
+
 	/**
 	 * Write JSONObject into file
 	 */

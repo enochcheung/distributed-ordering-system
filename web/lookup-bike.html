@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browse</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <link rel="stylesheet" type="text/css" href="jquery.dynatable.css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="jquery.dynatable.js"></script>
+</head>
+
+
+<body>
+<div id="frame">
+    <h3>Bike Lookup</h3>
+    <span>Item Number: </span><input id="input" type="text">
+   <button type="button" onclick="lookupBike()">Lookup Bike</button>
+    <br>
+    <br>
+
+    <h3>Bike Purchase</h3>
+    <form id="purchase-form" action="">
+        CustomerID: <input type="text" name="customerID"/> <br>
+        Bike Item Number: <input type='text' name='itemNum'/> <br>
+        Quantity: <input type='text' name='quantity'/> <br>
+        <button type ="submit">Buy</button>
+    </form>
+
+    <p id="message"></p>
+    <br>
+
+    <div id="table">
+        <table id="bikes-table">
+            <thead>
+            <th>Item Number</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Inv</th>
+            <th>Price</th>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    $(document).ajaxError(function( event, jqxhr, settings, thrownError ) {
+        document.getElementById("message").innerText = "Error requesting "+settings.url;
+    });
+
+    $(document).ready(
+            function () {
+                $("#purchase-form").on("submit", function (e) {
+                    e.preventDefault();
+                    $("#message").text("");
+                    $.ajax({
+                        type: "POST",
+                        contentType: "application/x-www-form-urlencoded",
+                        data: $("#purchase-form").serialize(),
+                        dataType: "text",
+                        url: "/rest/orderingsystem/buy/"
+                    }).done(function (data) {
+                                $("#message").text(data);
+                            }
+                    ).fail(function (event, jqxhr, settings, thrownError) {
+                                $("#message").text("Error requesting" + settings.url);
+                            }
+                    );
+                });
+            }
+    );
+
+
+    var dynatable = $('#bikes-table').dynatable({records:[]}).data('dynatable');
+    function lookupBike() {
+        var input;
+        document.getElementById("message").innerText = "";
+        input = document.getElementById("input").value;
+        $.ajax({
+            type: "GET",
+            datatype: "json",
+            url: "/rest/orderingsystem/bike/" + input,
+            success: function (data) {
+                dynatable.settings.dataset.originalRecords=[data];
+                dynatable.process();
+            },
+            fail: function () {
+                document.getElementById("message").innerText = input+" not found.";
+            }
+        });
+    }
+
+</script>
+</body>
+</html>

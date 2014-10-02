@@ -2,8 +2,12 @@ package com.enochc.software648.hw1;
 
 import org.json.simple.JSONObject;
 
-public class Order {
-	private String customerID;
+import java.io.Serializable;
+
+public class Order implements Serializable {
+    private static final long serialVersionUID = 39429849349L;
+
+    private String customerID;
 	private String date;
 	private String status;
 	private String itemNumber;
@@ -34,7 +38,31 @@ public class Order {
 
 	}
 
-	public String getCustomerID() {
+    public String getDate() {
+        return date;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public String getItemNumber() {
+        return itemNumber;
+    }
+
+    public String getBikeName() {
+        return bikeName;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public int getPrice() {
+        return price;
+    }
+
+    public String getCustomerID() {
 		return customerID;
 	}
 
@@ -46,7 +74,11 @@ public class Order {
 		this.status = "Complete";
 	}
 
-	public JSONObject toJsonObject() {
+    public void setFailed() {
+        this.status = "Failed";
+    }
+
+    public JSONObject toJsonObject() {
 		JSONObject jsonObject = new JSONObject();
 		jsonObject.put("customerID", customerID);		
 		jsonObject.put("date", date);

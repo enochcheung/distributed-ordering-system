@@ -1772,7 +1772,7 @@ The Insight 1 provides incredible performance and quality. Its aluminum frame an
 item number=#31-1585
 
 category=Road Bike 
-inventory=3
+inventory=2
 bike price=$1,299.99
 bike name=Scattante SCX 350 Cross 2 Cyclocross Bike - 2014
 

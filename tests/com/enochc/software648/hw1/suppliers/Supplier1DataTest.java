@@ -23,13 +23,11 @@ public class Supplier1DataTest {
 
 	@Test
 	public void testSupplierBrowse() {
-		try {
 			System.out.print(supplier.browsePage(1));
 			System.out.print(supplier.browsePage(2));
 			System.out.print(supplier.browsePage(7));
 			System.out.print(supplier.browsePage(13));
-		} catch (RemoteException e) {
-		}
+
 
 	}
 

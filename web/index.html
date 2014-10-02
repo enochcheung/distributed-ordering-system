@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enoch's Bike Shop</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <link rel="stylesheet" type="text/css" href="jquery.dynatable.css"/>
+    <style>
+        body{
+            background-image: url("background.jpg");
+            background-color: black;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="jquery.dynatable.js"></script>
+</head>
+
+
+<body>
+<div id="container">
+    <div id="header">
+        <h1>Enoch's Bike Shop</h1>
+    </div>
+
+    <div id="content">
+        <div id="suppliers">Suppliers: </div>
+        <select id="menu" onchange="updateFrame(this.value)">
+            <option value="browse">Browse Bikes</option>
+            <option value="lookup-bike">Lookup/Buy Bikes</option>
+            <option value="new-customer">New Customer</option>
+            <option value="order-history">Customer Info/Order History/Order Lookup</option>
+        </select>
+
+        <iframe id="iframe" src="/browse.html" width="100%" height="75%"></iframe>
+
+
+    </div>
+</div>
+<script>
+    // Load list of available suppliers
+    $(document).ready(loadAvailableSuppliers());
+
+    function updateFrame(selection) {
+        if (selection === "browse") {
+            document.getElementById("iframe").src = "/browse.html";
+        } else if (selection === "lookup-bike") {
+            document.getElementById("iframe").src = "/lookup-bike.html";
+        } else if (selection === "new-customer") {
+            document.getElementById("iframe").src = "/new-customer.html";
+        } else if (selection === "order-history") {
+            document.getElementById("iframe").src = "/order-history.html";
+        }
+    }
+
+
+
+    function loadAvailableSuppliers() {
+        $.ajax({
+            type: "GET",
+            url: "/rest/orderingsystem/suppliers",
+
+            error: function () {
+                $("#suppliers").text("Cannot retrieve suppliers.");
+            }
+        }).done(function (data){
+            $("#suppliers").text("Available Suppliers: " + data);
+        });
+    }
+
+    function lookupOrder() {
+        var input, url;
+
+        // read input field
+        input = document.getElementById("input").value;
+        url = "/rest/orderingsystem/orderID/" + input + "/";
+
+        $.ajax({
+            type: "GET",
+            url: url,
+            success: function (data) {
+                document.getElementById("result").innerText = data;
+            },
+            error: function () {
+                document.getElementById("result").innerText = "Cannot retrieve order."
+            }
+        })
+    }
+</script>
+</body>
+</html>

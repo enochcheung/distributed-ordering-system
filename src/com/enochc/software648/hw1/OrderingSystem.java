@@ -1,22 +1,24 @@
 package com.enochc.software648.hw1;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.rmi.AccessException;
+import java.io.*;
+import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
-import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class OrderingSystem {
+public class OrderingSystem extends UnicastRemoteObject implements OrderingSystemInterface {
     private static final String SETTINGS_FILE = "settings.properties";
+    private static final Pattern itemNumberPattern = Pattern
+            .compile("^([a-zA-Z0-9]{2})-([0-9]{2}-[0-9]{4}$)");
     private final Map<String, SupplierInterface> suppliersMap;
+    private final HashMap<String, BikeCache> suppliersCache;
+    private final Map<String, String> suppliersPrefixMap;
     private final CustomerDB customerDB;
     private final OrderDB orderDB;
 
@@ -25,18 +27,8 @@ public class OrderingSystem {
      *
      * @param suppliers
      */
-    public OrderingSystem(List<SupplierInterface> suppliers) {
-        suppliersMap = new HashMap<String, SupplierInterface>();
-        customerDB = new CustomerDB();
-        orderDB = new OrderDB();
-
-        try {
-            for (SupplierInterface supplier : suppliers) {
-                suppliersMap.put(supplier.getName(), supplier);
-            }
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
+    public OrderingSystem(List<SupplierInterface> suppliers) throws RemoteException {
+        this();
         System.out.println("Available suppliers: "
                 + getAvailableSuppliers().toString());
 
@@ -61,21 +53,21 @@ public class OrderingSystem {
             } else if (args[0].equals("browseByPrice")) {
                 browseByPrice(stripHead(args));
             } else if (args[0].equals("lookupBike")) {
-                lookupBike(stripHead(args));
+                parseLookupBike(stripHead(args));
             } else if (args[0].equals("purchase")) {
                 purchase(stripHead(args));
             } else if (args[0].equals("newCustomer")) {
-                newCustomer(stripHead(args));
+                parseNewCustomer(stripHead(args));
             } else if (args[0].equals("lookupCustomer")) {
                 lookupCustomer(stripHead(args));
             } else if (args[0].equals("lookupOrder")) {
-                lookupOrder(stripHead(args));
+                parseLookupOrder(stripHead(args));
             } else if (args[0].equals("completeOrder")) {
                 completeOrder(stripHead(args));
             } else if (args[0].equals("orderHistory")) {
-                orderHistory(stripHead(args));
+                parseOrderHistory(stripHead(args));
             } else if (args[0].equals("listCustomers")) {
-                listCustomers(stripHead(args));
+                parseListCustomers(stripHead(args));
             } else if (args[0].equals("quit") && args.length == 1) {
                 break;
             } else {
@@ -87,7 +79,7 @@ public class OrderingSystem {
     /**
      * Constructs a new OrderingSystem to be accessed through a servlet
      */
-    public OrderingSystem() {
+    public OrderingSystem() throws RemoteException {
         // load settings
         String host1 = "", host2 = "";
         int port1 = 0, port2 = 0;
@@ -95,13 +87,15 @@ public class OrderingSystem {
             Properties prop = new Properties();
             FileInputStream in = new FileInputStream(SETTINGS_FILE);
             prop.load(in);
-            host1 = prop.getProperty("host1");
-            port1 = Integer.parseInt(prop.getProperty("port1"));
-            host2 = prop.getProperty("host2");
-            port2 = Integer.parseInt(prop.getProperty("port2"));
+            host1 = prop.getProperty("supplier1.host");
+            port1 = Integer.parseInt(prop.getProperty("supplier1.port"));
+            host2 = prop.getProperty("supplier2.host");
+            port2 = Integer.parseInt(prop.getProperty("supplier2.port"));
 
             in.close();
         } catch (IOException e) {
+            System.out.println("Unable to load settings.");
+            e.printStackTrace();
         }
 
         // look up suppliers
@@ -111,6 +105,7 @@ public class OrderingSystem {
             suppliers.add((SupplierInterface) registry1.lookup("Supplier1"));
         } catch (NotBoundException | RemoteException e) {
             System.out.println("Unable to connect to Supplier1");
+            e.printStackTrace();
         }
 
         try {
@@ -118,28 +113,54 @@ public class OrderingSystem {
             suppliers.add((SupplierInterface) registry2.lookup("Supplier2"));
         } catch (NotBoundException | RemoteException e) {
             System.out.println("Unable to connect to Supplier2");
+            e.printStackTrace();
         }
 
         // initiate and populate fields
         suppliersMap = new HashMap<String, SupplierInterface>();
+        suppliersPrefixMap = new HashMap<String, String>();
+        suppliersCache = new HashMap<String, BikeCache>();
         customerDB = new CustomerDB();
         orderDB = new OrderDB();
 
         try {
             for (SupplierInterface supplier : suppliers) {
-                suppliersMap.put(supplier.getName(), supplier);
+                String name = supplier.getName();
+                suppliersMap.put(name, supplier);
+                suppliersPrefixMap.put(supplier.getSupplierPrefix(), name);
+                BikeCache bikeCache = new BikeCache(supplier);
+                suppliersCache.put(name, bikeCache);
+
+                // create new thread to run the bikeCache periodic update
+                (new Thread(bikeCache.getRunnable())).start();
+
             }
         } catch (RemoteException e) {
             e.printStackTrace();
         }
     }
 
-    public Set<String> getAvailableSuppliers() {
-        return suppliersMap.keySet();
+    @Override
+    public ArrayList<String> getAvailableSuppliers() throws RemoteException {
+        ArrayList<String> list = new ArrayList<String>(suppliersMap.keySet());
+        Collections.sort(list);
+        return list;
     }
 
     private String[] stripHead(String[] args) {
         return Arrays.copyOfRange(args, 1, args.length);
+    }
+
+    /**
+     * @return SupplierInterface for supplier holding given item number. Null if not found.
+     */
+    private String extractSupplierName(String itemNumber) {
+        Matcher matcher = itemNumberPattern.matcher(itemNumber);
+        if (!matcher.matches()) {
+            return null;
+        }
+        String prefix = matcher.group(1);
+        return suppliersPrefixMap.get(prefix);
     }
 
     private void parseBrowse(String[] args) {
@@ -161,6 +182,26 @@ public class OrderingSystem {
         }
     }
 
+    @Override
+    public ArrayList<Bike> browse() {
+        ArrayList<Bike> bikes = new ArrayList<Bike>();
+        for (String supplierName : suppliersMap.keySet()) {
+            bikes.addAll(browseSupplier(supplierName));
+        }
+        return bikes;
+    }
+
+    /**
+     * Returns the inventory of given supplier, either from the supplier or from the cache
+     * @param supplierName
+     * @return
+     */
+    private ArrayList<Bike> browseSupplier(String supplierName) {
+        ArrayList<Bike> bikes;
+        SupplierInterface supplier = suppliersMap.get(supplierName);
+        BikeCache cache = suppliersCache.get(supplierName);
+        return cache.browseBikes();
+    }
     private void browseAll(String supplierName) {
         SupplierInterface supplier = suppliersMap.get(supplierName);
         if (supplier == null) {
@@ -223,30 +264,64 @@ public class OrderingSystem {
         }
     }
 
-    private void lookupBike(String[] args) {
-        if (args.length != 2) {
+    private void parseLookupBike(String[] args) {
+        if (args.length != 1) {
             System.out
-                    .println("Invalid number of parameters. Format: lookupBike supplier_name item_number");
-            return;
-        }
-        SupplierInterface supplier = suppliersMap.get(args[0]);
-        if (supplier == null) {
-            System.out.println(args[0] + " is not a valid supplier.");
+                    .println("Invalid number of parameters. Format: lookupBike item_number");
             return;
         }
 
-        try {
 
-            if (!supplier.validItemNumber(args[1])) {
-                System.out.println(args[1] + " not found.");
+            Bike bike = lookupBike(args[0]);
+
+            if (bike == null) {
+                System.out.println(args[0] + " not found.");
                 return;
             }
 
-            Bike bike = supplier.lookupBike(args[1]);
             System.out.print(bike.toString());
-        } catch (RemoteException e) {
-            e.printStackTrace();
+
+    }
+
+    @Override
+    public boolean hasBike(String itemNum) throws RemoteException {
+        return lookupBike(itemNum) != null;
+    }
+
+    @Override
+    public Bike lookupBike(String itemNum) {
+        System.out.println("Searching for " + itemNum);
+        String supplierName = extractSupplierName(itemNum);
+        if (supplierName == null) {
+            return null;
         }
+        BikeCache cache = suppliersCache.get(supplierName);
+
+        return cache.lookupBike(itemNum);
+    }
+
+    @Override
+    public String purchase(String customerID, String itemNum, int quantity) {
+        CustomerInfo customer = this.lookupCustomer(customerID);
+        Bike bike = this.lookupBike(itemNum);
+        String supplierName = this.extractSupplierName(itemNum);
+        BikeCache cache = suppliersCache.get(supplierName);
+
+        if (customer==null||bike==null) {
+            return null;
+        }
+
+        if (quantity > bike.getInventory()) {
+            return null;
+        }
+
+        int price = bike.getPrice()*quantity;
+        String orderID = orderDB.newOrder(customerID,itemNum,bike.getName(),quantity,price);
+        customerDB.addOrder(customerID,orderID);
+        PurchaseRequest request = new PurchaseRequest(itemNum,quantity,orderID,this);
+        cache.purchase(request);
+
+        return orderID;
     }
 
     private void purchase(String[] args) {
@@ -319,10 +394,10 @@ public class OrderingSystem {
 
     }
 
-    private void newCustomer(String[] args) {
+    private void parseNewCustomer(String[] args) {
         if (args.length != 1) {
             System.out
-                    .println("Invalid number of parameters. Format: listCustomers");
+                    .println("Invalid number of parameters. Format: newCustomer");
             return;
         }
 
@@ -351,15 +426,32 @@ public class OrderingSystem {
             System.out.println("Zip code?");
             String zipcode = inputReader.readLine();
 
-            CustomerInfo customerInfo = new CustomerInfo(customerID, firstname,
+            newCustomer(customerID, firstname,
                     lastname, street, city, state, zipcode);
-            customerDB.addCustomer(customerID, customerInfo);
-
             System.out.println("Customer " + customerID + " added.");
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+    }
+
+    @Override
+    public boolean newCustomer(String customerID, String firstname, String lastname, String street,
+                               String city, String state, String zipcode) {
+        if (customerDB.hasCustomer(customerID)) {
+            System.out.println(customerID + " already taken.");
+            return false;
+        }
+        CustomerInfo customerInfo = new CustomerInfo(customerID, firstname,
+                lastname, street, city, state, zipcode);
+        customerDB.addCustomer(customerID, customerInfo);
+        System.out.println("Customer " + customerID + " added.");
+        return true;
+    }
+
+    @Override
+    public CustomerInfo lookupCustomer(String customerID) {
+        return customerDB.lookup(customerID);
     }
 
     private void lookupCustomer(String[] args) {
@@ -379,7 +471,7 @@ public class OrderingSystem {
         System.out.println(customerInfo.toString() + "\n");
     }
 
-    private void lookupOrder(String[] args) {
+    private void parseLookupOrder(String[] args) {
         if (args.length != 1) {
             System.out
                     .println("Invalid number of parameters. Format: lookupOrder orderID");
@@ -408,6 +500,22 @@ public class OrderingSystem {
 
     }
 
+    @Override
+    public Order lookupOrder(String orderID) throws RemoteException {
+        return orderDB.lookupOrder(orderID);
+    }
+
+
+    @Override
+    public void completeOrder(String orderID) throws RemoteException {
+        orderDB.completeOrder(orderID);
+    }
+
+    @Override
+    public String lookupShipping(String customerID) {
+        return customerDB.lookupShipping(customerID);
+    }
+
     private void completeOrder(String[] args) {
         if (args.length != 1) {
             System.out
@@ -422,11 +530,11 @@ public class OrderingSystem {
         }
         orderDB.completeOrder(orderID);
         System.out.println("Order completed!");
-        lookupOrder(args);
+        parseLookupOrder(args);
 
     }
 
-    private void orderHistory(String[] args) {
+    private void parseOrderHistory(String[] args) {
         if (args.length != 1) {
             System.out
                     .println("Invalid number of parameters. Format: orderHistory customerID");
@@ -444,11 +552,28 @@ public class OrderingSystem {
         for (String orderID : orderHistory) {
             String[] orderIDArray = new String[1];
             orderIDArray[0] = orderID;
-            lookupOrder(orderIDArray);
+            parseLookupOrder(orderIDArray);
         }
     }
 
-    private void listCustomers(String[] args) {
+    @Override
+    public ArrayList<Order> orderHistory(String customerID) throws RemoteException {
+        CustomerInfo customerInfo = customerDB.lookup(customerID);
+        if (customerInfo == null) {
+            System.out.println("Customer " + customerID
+                    + " not found. (Use newCustomer to add customer first)");
+            return null;
+        }
+        List<String> orderHistory = customerInfo.orderHistory();
+        ArrayList<Order> ordersList = new ArrayList<Order>();
+        for (String orderID : orderHistory) {
+            ordersList.add(lookupOrder(orderID));
+        }
+        return ordersList;
+
+    }
+
+    private void parseListCustomers(String[] args) {
         if (args.length != 0) {
             System.out
                     .println("Invalid number of parameters. Format: orderHistory customerID");
@@ -457,7 +582,62 @@ public class OrderingSystem {
         System.out.println(customerDB.listCustomers().toString());
     }
 
+    @Override
+    public ArrayList<String> listCustomers() throws RemoteException {
+        return new ArrayList<String>(customerDB.listCustomers());
+    }
+
+    public void notifyFailed(String orderID) {
+        orderDB.failedOrder(orderID);
+
+    }
+
     public static void main(String[] args) {
+        if (args.length > 0 && args[0].equals("console")) {
+            consoleMain(args);
+            return;
+        }
+
+        // look up host and port of target RMI registry
+        int port = 0;
+        String host = "";
+        try {
+            Properties prop = new Properties();
+            FileInputStream in = new FileInputStream(SETTINGS_FILE);
+            prop.load(in);
+            port = Integer.parseInt(prop.getProperty("orderingsystem.port"));
+            host = prop.getProperty("orderingsystem.host");
+
+            in.close();
+        } catch (IOException e) {
+            System.out.println("Unable to open " + SETTINGS_FILE);
+        }
+
+        // create the registry
+        Registry registry = null;
+
+        try {
+            registry = LocateRegistry.createRegistry(port);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+        // bind orderingsystem to registry
+        try {
+            OrderingSystemInterface orderingSystem = new OrderingSystem();
+            registry.bind("OrderingSystem", orderingSystem);
+            System.out.println("OrderingSystem started.");
+
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        } catch (AlreadyBoundException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+    public static void consoleMain(String[] args) {
         // load settings
         String host1 = "", host2 = "";
         int port1 = 0, port2 = 0;
@@ -465,13 +645,14 @@ public class OrderingSystem {
             Properties prop = new Properties();
             FileInputStream in = new FileInputStream(SETTINGS_FILE);
             prop.load(in);
-            host1 = prop.getProperty("host1");
-            port1 = Integer.parseInt(prop.getProperty("port1"));
-            host2 = prop.getProperty("host2");
-            port2 = Integer.parseInt(prop.getProperty("port2"));
+            host1 = prop.getProperty("supplier1.host");
+            port1 = Integer.parseInt(prop.getProperty("supplier1.port"));
+            host2 = prop.getProperty("supplier2.host");
+            port2 = Integer.parseInt(prop.getProperty("supplier2.port"));
 
             in.close();
         } catch (IOException e) {
+            e.printStackTrace();
         }
 
         // look up suppliers
@@ -482,6 +663,7 @@ public class OrderingSystem {
             suppliers.add((SupplierInterface) registry1.lookup("Supplier1"));
         } catch (NotBoundException | RemoteException e) {
             System.out.println("Unable to connect to Supplier1");
+            e.printStackTrace();
         }
 
         try {
@@ -489,9 +671,14 @@ public class OrderingSystem {
             suppliers.add((SupplierInterface) registry2.lookup("Supplier2"));
         } catch (NotBoundException | RemoteException e) {
             System.out.println("Unable to connect to Supplier2");
+            e.printStackTrace();
         }
 
-        OrderingSystem orderingSystem = new OrderingSystem(suppliers);
+        try {
+            OrderingSystem orderingSystem = new OrderingSystem(suppliers);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
 
     }
 }

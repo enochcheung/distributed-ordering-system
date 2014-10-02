@@ -10,17 +10,19 @@ public class Bike implements Serializable{
 	private String name;
 	private String description;
 	private String itemNumber;
-	private String category;
+    private String supplierName;
+    private String category;
 	private int inventory;
 	private int inventoryLineNumber;
 
 	public Bike(int price, String name, String description,
-			String itemNumber, String category, int inventory,
+			String itemNumber, String supplierName, String category, int inventory,
 			int inventoryLineNumber) {
 		this.price = price;
 		this.name = name;
 		this.description = description;
 		this.itemNumber = itemNumber;
+        this.supplierName = supplierName;
 		this.category = category;
 		this.inventory = inventory;
 		this.inventoryLineNumber = inventoryLineNumber;
@@ -55,7 +57,11 @@ public class Bike implements Serializable{
 		return itemNumber;
 	}
 
-	public String getCategory() {
+    public String getSupplierName() {
+        return supplierName;
+    }
+
+    public String getCategory() {
 		return category;
 	}
 
@@ -74,8 +80,8 @@ public class Bike implements Serializable{
 	public String toString() {
 		Double priceDollars = (double) price / 100;
 		return String
-				.format("%s%n\tPrice: $%.2f%n\tInventory: %d%n\t%s%n\tItem Number: %s%n\tCategory: %s%n%n",
-						name, priceDollars, inventory, description, itemNumber,
+				.format("%s%n\tPrice: $%.2f%n\tInventory: %d%n\t%s%n\tItem Number: %s%n\tSupplier: %s%n\tCategory: %s%n%n",
+						name, priceDollars, inventory, description, itemNumber, supplierName,
 						category);
 	}
 }

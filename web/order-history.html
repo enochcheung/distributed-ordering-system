@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Order History</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <link rel="stylesheet" type="text/css" href="jquery.dynatable.css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="jquery.dynatable.js"></script>
+</head>
+
+
+<body>
+<div id="frame">
+    <h3>Customer Lookup</h3>
+    <span>CustomerID: </span><input id="customerID-input" type="text">
+    <button type="button" onclick="lookupCustomer()">Lookup Customer</button>
+    <br>
+    <br>
+<!--
+    <h3>Order Lookup</h3>
+
+    <form id="order-lookup-form" action="">
+        CustomerID: <input type="text" name="customerID"/> <br>
+        Bike Item Number: <input type='text' name='itemNum'/> <br>
+        Quantity: <input type='text' name='quantity'/> <br>
+        <button type="submit">Buy</button>
+    </form>
+    <br>
+-->
+    <p id="message"></p>
+
+    <br>
+
+    <div id="table">
+
+        <table id="orders-table">
+            <thead>
+            <th>Customer</th>
+            <th>Item Number</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Bike Name</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+
+</div>
+<script>
+    $(document).ajaxError(function (event, jqxhr, settings, thrownError) {
+        document.getElementById("message").innerText = "Error requesting " + settings.url;
+    });
+
+    $(document).ready(
+            function () {
+                $("#orders-form").on("submit", function (e) {
+                    e.preventDefault();
+                    $("#message").text("");
+                    $.ajax({
+                        type: "GET",
+                        data: $("#orders-form").serialize().get("customerID"),
+                        dataType: "text",
+                        url: "/rest/orderingsystem/buy/"
+                    }).done(function (data) {
+                                $("#message").text(data);
+                            }
+                    ).fail(function (event, jqxhr, settings, thrownError) {
+                                $("#message").text("Error requesting" + settings.url);
+                            }
+                    );
+                });
+            }
+    );
+
+    var dynatable = $('#orders-table').dynatable({records: []}).data('dynatable');
+
+    function orderHistory(customerID) {
+        $.ajax({
+            type: "GET",
+            datatype: "json",
+            url: "/rest/orderingsystem/orderhistory/" + customerID,
+            success: function (data) {
+                dynatable.settings.dataset.originalRecords=data;
+                dynatable.process();
+            },
+            fail: function () {
+                document.getElementById("message").innerText = input+" not found.";
+            }
+        });
+    }
+    function lookupCustomer() {
+        var input;
+        document.getElementById("message").innerText = "";
+        input = document.getElementById("customerID-input").value;
+        $.ajax({
+            type: "GET",
+            url: "/rest/orderingsystem/customer/" + input
+        }).done(function (data) {
+            document.getElementById("message").innerText = data;
+        });
+
+        orderHistory(input);
+    }
+
+</script>
+</body>
+</html>

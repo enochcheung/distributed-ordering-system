@@ -19,9 +19,13 @@ public class Supplier2Data implements SupplierData {
 	private static final String NAME = "supplier2";
 	private static final String TMP_FILENAME = "data/Supplier1.tmp";
 	private static final String FILENAME = "data/Supplier2.txt";
-	private static final Pattern pricePattern = Pattern.compile("^\\$(.*)");
+    private static final String SUPPLIER_PREFIX = "S2";
+
+    private static final Pattern pricePattern = Pattern.compile("^\\$(.*)");
 	private static final Pattern itemNumberPattern = Pattern
-			.compile("^#[0-9]{2}-[0-9]{4}$");
+			.compile("^#([0-9]{2}-[0-9]{4})$");
+    private static final Pattern externalItemNumberPattern = Pattern
+            .compile("^([a-zA-Z0-9]{2})-([0-9]{2}-[0-9]{4}$)");
 	private static final Pattern inventoryPattern = Pattern
 			.compile("^inventory=(.*)");
 
@@ -31,6 +35,11 @@ public class Supplier2Data implements SupplierData {
 	public String getName() {
 		return NAME;
 	}
+
+    @Override
+    public String getSupplierPrefix() {
+        return SUPPLIER_PREFIX;
+    }
 
 	@Override
 	public void openReader() throws FileNotFoundException {
@@ -72,7 +81,8 @@ public class Supplier2Data implements SupplierData {
 			if (line == null) {
 				return null;
 			}
-			if (!itemNumberPattern.matcher(line).matches()) {
+            Matcher matcher = itemNumberPattern.matcher(line);
+			if (!matcher.matches()) {
 				descriptionBuilder.append(line);
 
 			} else {
@@ -83,6 +93,7 @@ public class Supplier2Data implements SupplierData {
 
 		// Read the item number
 		String itemNumber = readItemNumber(line);
+        String externalItemNumber = SUPPLIER_PREFIX+"-"+itemNumber;
 
 		// Read the category
 		line = readNonemptyLine();
@@ -99,7 +110,7 @@ public class Supplier2Data implements SupplierData {
 		int inventory = readInventory(line);
 		int inventoryLineNumber = reader.getLineNumber();
 
-		Bike bike = new Bike(price, name, description, itemNumber, category,
+		Bike bike = new Bike(price, name, description, externalItemNumber, this.getName(), category,
 				inventory, inventoryLineNumber);
 		return bike;
 	}
@@ -172,10 +183,11 @@ public class Supplier2Data implements SupplierData {
 	}
 
 	private String readItemNumber(String line) throws IOException {
-		if (!itemNumberPattern.matcher(line).matches()) {
+        Matcher matcher = itemNumberPattern.matcher(line);
+		if (!matcher.matches()) {
 			throw new IOException("Item number expected in \"" + line + "\"");
 		}
-		return line;
+		return matcher.group(1);
 	}
 
 	private String readCategory(String line) {

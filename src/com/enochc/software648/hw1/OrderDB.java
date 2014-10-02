@@ -111,9 +111,15 @@ public class OrderDB {
 		flushJSON();
 	}
 
-	public void orderHistory(String customerID) {
 
-	}
+    public void failedOrder(String orderID) {
+        JSONObject orderObj = (JSONObject) database.get(orderID);
+        Order order = new Order(orderObj);
+        order.setFailed();
+        orderObj = order.toJsonObject();
+        database.put(orderID, orderObj);
+        flushJSON();
+    }
 
 	/**
 	 * Write JSONObject into file
@@ -138,4 +144,5 @@ public class OrderDB {
 			}
 		}
 	}
+
 }

@@ -1,1 +1,0 @@
-{"enoch":{"address":"5000 Forbes Ave","zipcode":"15213","state":"PA","lastname":"Cheung","orders":["2"],"firstname":"Enoch","customerID":"enoch","city":"Pittsburgh"},"obama":{"address":"1600 Pennsylvania Ave","zipcode":"20500","state":"DC","lastname":"Obama","orders":["0","1"],"firstname":"Barack","customerID":"obama","city":"Washington"}}

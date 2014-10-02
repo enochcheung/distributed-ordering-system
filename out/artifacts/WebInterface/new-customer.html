@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browse</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <script src="jquery-1.11.1.js"></script>
+    <!--
+    <link rel="stylesheet" type="text/css" href="jquery.dynatable.css"/>
+    <script src="jquery.dynatable.js"></script>
+    -->
+</head>
+
+
+<body>
+<div id="frame">
+    <form id="customer-form" action="">
+        CustomerID: <input type="text" name="customerID"/> <br>
+        First Name: <input type='text' name='first'/> <br>
+        Last Name: <input type='text' name='last'/> <br>
+        Street: <input type='text' name='street'/> <br>
+        City: <input type='text' name='city'/> <br>
+        State: <input type='text' name='state'/> <br>
+        Zip Code: <input type='text' name='zip'/> <br>
+        <button type ="submit">Create new customer</button>
+    </form>
+
+    <div id="message">response</div>
+
+
+</div>
+<script>
+    $(document).ready(
+            function () {
+                $("#customer-form").on("submit", function (e) {
+                    e.preventDefault();
+                    $("#message").text("");
+                    $.ajax({
+                        type: "POST",
+                        contentType: "application/x-www-form-urlencoded",
+                        data: $("#customer-form").serialize(),
+                        dataType: "text",
+                        url: "/rest/orderingsystem/customer/new/"
+                    }).done(function (data) {
+                                $("#message").text(data);
+                            }
+                    ).fail(function (event, jqxhr, settings, thrownError) {
+                                $("#message").text("Error requesting" + settings.url);
+                            }
+                    );
+                });
+            }
+    );
+
+    $(document).ajaxError(function (event, jqxhr, settings, thrownError) {
+        $("#message").text("Error requesting " + settings.url);
+    });
+
+
+</script>
+</body>
+</html>

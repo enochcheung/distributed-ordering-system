@@ -19,12 +19,15 @@ public class Supplier1Data implements SupplierData {
 	private static final String NAME = "supplier1";
 	private static final String TMP_FILENAME = "data/Supplier1.tmp";
 	private static final String FILENAME = "data/Supplier1.txt";
-	private static final Pattern pricePattern = Pattern
+    private static final String SUPPLIER_PREFIX = "S1";
+    private static final Pattern pricePattern = Pattern
 			.compile("^bike price=\\$(.*)");
 	private static final Pattern namePattern = Pattern
 			.compile("^bike name=(.*)");
 	private static final Pattern itemNumberPattern = Pattern
-			.compile("^item number=(.*)");
+			.compile("^item number=#(.*)");
+    private static final Pattern externalItemNumberPattern = Pattern
+            .compile("^([a-zA-Z0-9]{2})-([0-9]{2}-[0-9]{4}$)");
 	private static final Pattern categoryPattern = Pattern
 			.compile("^category=(.*)");
 	private static final Pattern inventoryPattern = Pattern
@@ -36,6 +39,12 @@ public class Supplier1Data implements SupplierData {
 	public String getName() {
 		return NAME;
 	}
+
+
+    @Override
+    public String getSupplierPrefix() {
+        return SUPPLIER_PREFIX;
+    }
 
 	@Override
 	public void openReader() throws FileNotFoundException {
@@ -90,7 +99,8 @@ public class Supplier1Data implements SupplierData {
 		String description = descriptionBuilder.toString();
 
 		// Read the item number
-		String itemNumber = readItemNumber(line);
+		String internalItemNumber = readItemNumber(line);
+        String externalItemNumber = SUPPLIER_PREFIX+"-"+internalItemNumber;
 
 		// Read the category
 		line = readNonemptyLine();
@@ -107,7 +117,7 @@ public class Supplier1Data implements SupplierData {
 		int inventory = readInventory(line);
 		int inventoryLineNumber = reader.getLineNumber();
 
-		Bike bike = new Bike(price, name, description, itemNumber, category,
+		Bike bike = new Bike(price, name, description, externalItemNumber, this.getName(), category,
 				inventory, inventoryLineNumber);
 		return bike;
 	}

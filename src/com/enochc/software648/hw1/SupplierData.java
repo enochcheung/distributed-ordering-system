@@ -11,7 +11,9 @@ public interface SupplierData {
 	 */
 	public Bike readBike() throws IOException;
 
-	public void openReader() throws FileNotFoundException;
+    public String getSupplierPrefix();
+
+    public void openReader() throws FileNotFoundException;
 
 	public void closeReader();
 
