@@ -7,7 +7,7 @@
 5. Do not manually modify data files when any of the three programs are running.
 
 ## Commands:
-To complete an order, send a PUT request to `url_here:8080/completeorder/{customerID}`.
+To complete an order, send a PUT request to `url_here:8080/completeorder/{orderID}`.
 
 ### OrderingSystem Console version (Deprecated, might not work):
 Start OrderingSystem with param `console`
