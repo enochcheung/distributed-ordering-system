@@ -11,8 +11,9 @@ To complete an order, send a PUT request to `url_here:8080/completeorder/{orderI
 
 ### OrderingSystem Console version (Deprecated, might not work):
 Start OrderingSystem with param `console`
-- `help` Tells you to read the readme.
-- `browse supplier_name page_num` Browses the inventory of chosen supplier. `page_num` could be `all`.
+
+* `help` Tells you to read the readme.
+* `browse supplier_name page_num` Browses the inventory of chosen supplier. `page_num` could be `all`.
 * `browseByPrice supplier_name page_num` Browses the inventory of chosen supplier by increasing price. `page_num` could be `all`.
 * `lookupBike item_number` Looks up information for a bike.
 * `purchase supplier_name item_number quantity customerID` Buys a bike. An orderID will be assigned. `customerID` must first be created using `newCustomer customerID`.
