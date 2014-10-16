@@ -98,24 +98,6 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
             e.printStackTrace();
         }
 
-        // look up suppliers
-        List<SupplierInterface> suppliers = new ArrayList<SupplierInterface>();
-        try {
-            Registry registry1 = LocateRegistry.getRegistry(host1, port1);
-            suppliers.add((SupplierInterface) registry1.lookup("Supplier1"));
-        } catch (NotBoundException | RemoteException e) {
-            System.out.println("Unable to connect to Supplier1");
-            e.printStackTrace();
-        }
-
-        try {
-            Registry registry2 = LocateRegistry.getRegistry(host2, port2);
-            suppliers.add((SupplierInterface) registry2.lookup("Supplier2"));
-        } catch (NotBoundException | RemoteException e) {
-            System.out.println("Unable to connect to Supplier2");
-            e.printStackTrace();
-        }
-
         // initiate and populate fields
         suppliersMap = new HashMap<String, SupplierInterface>();
         suppliersPrefixMap = new HashMap<String, String>();
@@ -123,21 +105,48 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
         customerDB = new CustomerDB();
         orderDB = new OrderDB();
 
+        // look up suppliers
+        List<SupplierInterface> suppliers = new ArrayList<SupplierInterface>();
         try {
-            for (SupplierInterface supplier : suppliers) {
-                String name = supplier.getName();
-                suppliersMap.put(name, supplier);
-                suppliersPrefixMap.put(supplier.getSupplierPrefix(), name);
-                BikeCache bikeCache = new BikeCache(supplier);
-                suppliersCache.put(name, bikeCache);
+            Registry registry1 = LocateRegistry.getRegistry(host1, port1);
+            SupplierInterface supplier1 = (SupplierInterface) registry1.lookup("Supplier1");
 
-                // create new thread to run the bikeCache periodic update
-                (new Thread(bikeCache.getRunnable())).start();
+            suppliers.add(supplier1);
+            String name1 = supplier1.getName();
+            suppliersMap.put(name1, supplier1);
+            suppliersPrefixMap.put(supplier1.getSupplierPrefix(), name1);
+            BikeCache bikeCache = new BikeCache(supplier1, host1,port1,"Supplier1");
+            suppliersCache.put(name1, bikeCache);
 
-            }
-        } catch (RemoteException e) {
+            // create new thread to run the bikeCache periodic update
+            (new Thread(bikeCache.getRunnable())).start();
+
+        } catch (NotBoundException | RemoteException e) {
+            System.out.println("Unable to connect to Supplier1");
             e.printStackTrace();
         }
+
+        try {
+            Registry registry2 = LocateRegistry.getRegistry(host2, port2);
+            SupplierInterface supplier2 = (SupplierInterface) registry2.lookup("Supplier2");
+
+            suppliers.add(supplier2);
+
+            String name2 = supplier2.getName();
+            suppliersMap.put(name2, supplier2);
+            suppliersPrefixMap.put(supplier2.getSupplierPrefix(), name2);
+            BikeCache bikeCache = new BikeCache(supplier2, host2,port2,"Supplier2");
+            suppliersCache.put(name2, bikeCache);
+
+            // create new thread to run the bikeCache periodic update
+            (new Thread(bikeCache.getRunnable())).start();
+        } catch (NotBoundException | RemoteException e) {
+            System.out.println("Unable to connect to Supplier2");
+            e.printStackTrace();
+        }
+
+
+
     }
 
     @Override

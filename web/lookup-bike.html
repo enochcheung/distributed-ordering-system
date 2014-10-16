@@ -58,7 +58,7 @@
                         contentType: "application/x-www-form-urlencoded",
                         data: $("#purchase-form").serialize(),
                         dataType: "text",
-                        url: "/rest/orderingsystem/buy/"
+                        url: "rest/orderingsystem/buy/"
                     }).done(function (data) {
                                 $("#message").text(data);
                             }
@@ -76,10 +76,11 @@
         var input;
         document.getElementById("message").innerText = "";
         input = document.getElementById("input").value;
+
         $.ajax({
             type: "GET",
             datatype: "json",
-            url: "/rest/orderingsystem/bike/" + input,
+            url: "rest/orderingsystem/bike/" + input,
             success: function (data) {
                 dynatable.settings.dataset.originalRecords=[data];
                 dynatable.process();

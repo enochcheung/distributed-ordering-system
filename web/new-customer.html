@@ -39,7 +39,7 @@
                         contentType: "application/x-www-form-urlencoded",
                         data: $("#customer-form").serialize(),
                         dataType: "text",
-                        url: "/rest/orderingsystem/customer/new/"
+                        url: "rest/orderingsystem/customer/new/"
                     }).done(function (data) {
                                 $("#message").text(data);
                             }

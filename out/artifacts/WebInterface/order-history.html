@@ -64,7 +64,7 @@
                         type: "GET",
                         data: $("#orders-form").serialize().get("customerID"),
                         dataType: "text",
-                        url: "/rest/orderingsystem/buy/"
+                        url: "rest/orderingsystem/buy/"
                     }).done(function (data) {
                                 $("#message").text(data);
                             }
@@ -82,7 +82,7 @@
         $.ajax({
             type: "GET",
             datatype: "json",
-            url: "/rest/orderingsystem/orderhistory/" + customerID,
+            url: "rest/orderingsystem/orderhistory/" + customerID,
             success: function (data) {
                 dynatable.settings.dataset.originalRecords=data;
                 dynatable.process();
@@ -98,7 +98,7 @@
         input = document.getElementById("customerID-input").value;
         $.ajax({
             type: "GET",
-            url: "/rest/orderingsystem/customer/" + input
+            url: "rest/orderingsystem/customer/" + input
         }).done(function (data) {
             document.getElementById("message").innerText = data;
         });

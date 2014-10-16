@@ -1,17 +1,17 @@
 <component name="ArtifactManager">
-  <artifact type="war" name="WebInterfaceWAR">
+  <artifact type="war" build-on-make="true" name="WebInterfaceWAR">
     <output-path>$PROJECT_DIR$/out/artifacts/WebInterfaceWAR</output-path>
     <root id="archive" name="WebInterfaceWAR.war">
       <element id="directory" name="WEB-INF">
         <element id="directory" name="classes">
           <element id="module-output" name="distributed-ordering-system" />
+          <element id="file-copy" path="$PROJECT_DIR$/settings.properties" />
         </element>
         <element id="directory" name="lib">
           <element id="library" level="project" name="lib" />
         </element>
       </element>
       <element id="javaee-facet-resources" facet="distributed-ordering-system/web/Web" />
-      <element id="file-copy" path="$PROJECT_DIR$/settings.properties" />
     </root>
   </artifact>
 </component>

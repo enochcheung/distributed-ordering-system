@@ -1,6 +1,9 @@
 package com.enochc.software648.hw1;
 
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Queue;
@@ -9,7 +12,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class BikeCache {
     private static final long WAIT_TIME = 3000L;
-    private final SupplierInterface supplier;
+    private final String host;
+    private final int port;
+    private final String remoteName;
+    private SupplierInterface supplier;
+    boolean connected = false;
     private String supplierName;
     private final ConcurrentHashMap<String, Bike> cache = new ConcurrentHashMap<String, Bike>();
     private String dataVersion;
@@ -20,8 +27,12 @@ public class BikeCache {
     private final Object queueLock = new Object();
 
 
-    public BikeCache(SupplierInterface supplier) {
+    public BikeCache(SupplierInterface supplier, String host, int port, String remoteName) {
         this.supplier = supplier;
+        this.host = host;
+        this.port = port;
+        this.remoteName = remoteName;
+
         this.dataVersion = "";
 
         try {
@@ -30,6 +41,7 @@ public class BikeCache {
             System.out.println("could not load name from supplier");
             e.printStackTrace();
         }
+        connected = true;
         pullBikes();
 
     }
@@ -48,10 +60,28 @@ public class BikeCache {
     }
 
     /**
+     * Attempt to reconnect to supplier. Does nothing if failed (try again later).
+     */
+    private void reconnectSupplier() {
+        try {
+            Registry registry = LocateRegistry.getRegistry(host, port);
+            supplier = (SupplierInterface) registry.lookup(remoteName);
+            connected = true;
+            System.out.println("Reconnected to "+supplierName);
+        } catch (NotBoundException | RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
      * Pull bike data from supplier to bring cache up to date
      */
     private void pullBikes() {
         try {
+            if (!connected) {
+                this.reconnectSupplier();
+            }
+
             synchronized (this.writeLock) {
                 if (!this.dataVersion.equals(supplier.getDataVersion())) {
                     SupplierDataPatch dataPatch = supplier.getNewBikes(dataVersion);
@@ -64,6 +94,7 @@ public class BikeCache {
         } catch (RemoteException e) {
             System.out.println("Cannot load new bikes from supplier, keep using cached data");
             e.printStackTrace();
+            connected = false;   // connection lost so remove reference to supplier, reacquire later
         }
     }
 
@@ -84,6 +115,11 @@ public class BikeCache {
         if (purchaseQueue.isEmpty()) {
             return;
         }
+
+        if (!connected) {
+            this.reconnectSupplier();
+        }
+
         while (true) {
             synchronized (queueLock) {
                 PurchaseRequest request = purchaseQueue.peek();
@@ -99,6 +135,7 @@ public class BikeCache {
                 } catch (RemoteException e) {
                     System.out.println("Unable to communicate with supplier to push request");
                     e.printStackTrace();
+                    connected=false;
                     break;
                 }
 
