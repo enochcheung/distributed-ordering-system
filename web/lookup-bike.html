@@ -17,6 +17,13 @@
     <br>
     <br>
 
+    <h3>Login</h3>
+    <form id="login-form" action="">
+        CustomerID: <input type="text" name="customerID"/> <br>
+        Password: <input type='password' name='password'/> <br>
+        <button type ="submit">Login</button>
+    </form>
+
     <h3>Bike Purchase</h3>
     <form id="purchase-form" action="">
         CustomerID: <input type="text" name="customerID"/> <br>
@@ -44,9 +51,30 @@
     </div>
 </div>
 <script>
-    $(document).ajaxError(function( event, jqxhr, settings, thrownError ) {
-        document.getElementById("message").innerText = "Error requesting "+settings.url;
-    });
+    $(document).ready(
+            function () {
+                $("#login-form").on("submit", function (e) {
+                    e.preventDefault();
+                    $("#message").text("");
+                    $.ajax({
+                        type: "GET",
+                        headers: {"customerID":$("#login-form input[name=customerID]").val(),
+                            "password":$("#login-form input[name=password]").val()},
+                        dataType: "text",
+                        url: "rest/orderingsystem/auth/"
+                    }).done(function (data) {
+                                Window.sessionStorage.setItem("token",data);
+                                // $("#message").text("Login successful! (token: "+data+")");
+                                $("#message").text("Login successful! (token: "+Window.sessionStorage.getItem("token")+")");
+
+                            }
+                    ).fail(function (event, jqxhr, settings, thrownError) {
+                                $("#message").text("Login failed.");
+                            }
+                    );
+                });
+            }
+    );
 
     $(document).ready(
             function () {

@@ -5,7 +5,10 @@ import org.json.simple.JSONObject;
 
 import javax.annotation.PostConstruct;
 import javax.ws.rs.*;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.SecurityContext;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,6 +42,7 @@ public class OrderingSystemController {
         } catch (IOException e) {
             System.out.println("Unable to load settings.");
             e.printStackTrace();
+            return;
         }
 
         // look up orderingsystem
@@ -48,6 +52,7 @@ public class OrderingSystemController {
         } catch (NotBoundException | RemoteException e) {
             System.out.println("Unable to connect to OrderingSystem");
             e.printStackTrace();
+            return;
         }
     }
 
@@ -59,9 +64,7 @@ public class OrderingSystemController {
             }
             try {
                 wait(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            } catch (InterruptedException e) {e.printStackTrace();}
         }
     }
 
@@ -85,7 +88,7 @@ public class OrderingSystemController {
         jsonObject.put("status", order.getStatus());
         jsonObject.put("bikeName", order.getBikeName());
         jsonObject.put("quantity", order.getQuantity());
-        jsonObject.put("price", order.getPrice());
+        jsonObject.put("price", order.getPriceDollars());
         return jsonObject;
     }
 
@@ -109,6 +112,17 @@ public class OrderingSystemController {
     @Produces("text/html")
     public String hello() {
         return "hello";
+    }
+
+    /**
+     * Retrieves a authorization token, providing customerID and password
+     */
+    @GET
+    @Path("/auth")
+    @Produces("text/html")
+    public String auth(@HeaderParam("customerID") String customerID, @HeaderParam("password") String password) {
+
+        return "received "+customerID+" "+password;
     }
 
     @GET
@@ -198,8 +212,15 @@ public class OrderingSystemController {
     @GET
     @Path("/customer/{customerID}")
     @Produces("text/plain")
-    public String lookupCustomer(@PathParam("customerID") String customerID) {
+    public String lookupCustomer(@Context SecurityContext sc, @PathParam("customerID") String customerID) {
         connect();
+
+        // check that the user is accessing his own info
+        if (!sc.getUserPrincipal().getName().equals(customerID)) {
+            // user doesn't match customerID
+            throw new WebApplicationException(403);
+        }
+
         try {
             CustomerInfo customerInfo = orderingSystem.lookupCustomer(customerID);
             if (customerInfo == null) {

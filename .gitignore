@@ -1,3 +1,4 @@
+
 # Java class files
 *.class
 
@@ -7,6 +8,8 @@ bin/
 # workspace configuration files
 .settings/
 .metadata/
+.idea/
+
 
 # Mac OS X hidden file
 .DS_Store

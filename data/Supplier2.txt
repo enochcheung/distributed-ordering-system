@@ -443,7 +443,7 @@ The Zaskar is one of the longest running models in mountain bike history. The re
 #31-1662
 
 Mountain Bike 
-inventory=3
+inventory=2
 $2,399.99
 2014 Diamondback Sortie 1.0 29er Mountain Bike
 

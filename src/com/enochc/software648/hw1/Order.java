@@ -3,6 +3,7 @@ package com.enochc.software648.hw1;
 import org.json.simple.JSONObject;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 public class Order implements Serializable {
     private static final long serialVersionUID = 39429849349L;
@@ -60,6 +61,11 @@ public class Order implements Serializable {
 
     public int getPrice() {
         return price;
+    }
+
+    public BigDecimal getPriceDollars() {
+        BigDecimal priceDecimal = new BigDecimal(price);
+        return priceDecimal.divide(new BigDecimal(100));
     }
 
     public String getCustomerID() {
