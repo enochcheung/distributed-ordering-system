@@ -13,26 +13,21 @@
 <div id="frame">
     <h3>Bike Lookup</h3>
     <span>Item Number: </span><input id="input" type="text">
-   <button type="button" onclick="lookupBike()">Lookup Bike</button>
-    <br>
-    <br>
+    <button type="button" onclick="lookupBike()">Lookup Bike</button>
+    <p id="message"></p>
 
-    <h3>Login</h3>
-    <form id="login-form" action="">
-        CustomerID: <input type="text" name="customerID"/> <br>
-        Password: <input type='password' name='password'/> <br>
-        <button type ="submit">Login</button>
-    </form>
+    <br>
+    <br>
 
     <h3>Bike Purchase</h3>
     <form id="purchase-form" action="">
-        CustomerID: <input type="text" name="customerID"/> <br>
         Bike Item Number: <input type='text' name='itemNum'/> <br>
         Quantity: <input type='text' name='quantity'/> <br>
         <button type ="submit">Buy</button>
     </form>
+    <p id="purchase-message"></p>
 
-    <p id="message"></p>
+
     <br>
 
     <div id="table">
@@ -51,45 +46,37 @@
     </div>
 </div>
 <script>
-    $(document).ready(
-            function () {
-                $("#login-form").on("submit", function (e) {
-                    e.preventDefault();
-                    $("#message").text("");
-                    $.ajax({
-                        type: "GET",
-                        headers: {"customerID":$("#login-form input[name=customerID]").val(),
-                            "password":$("#login-form input[name=password]").val()},
-                        dataType: "text",
-                        url: "rest/orderingsystem/auth/"
-                    }).done(function (data) {
-                                Window.sessionStorage.setItem("token",data);
-                                $("#message").text("Login successful! (token: "+data+")");
-                            }
-                    ).fail(function (event, jqxhr, settings, thrownError) {
-                                $("#message").text("Login failed.");
-                            }
-                    );
-                });
-            }
-    );
+    var purchaseMessage = $("#purchase-message");
 
     $(document).ready(
             function () {
                 $("#purchase-form").on("submit", function (e) {
                     e.preventDefault();
-                    $("#message").text("");
+                    purchaseMessage.text("");
+                    var customerID = window.sessionStorage.getItem("customerID");
+                    var token = window.sessionStorage.getItem("token");
+
+                    if (customerID === null || token === null) {
+                        purchaseMessage.text("Login required.");
+                        return;
+                    }
+
                     $.ajax({
                         type: "POST",
+                        headers: {"customerID":customerID,"token":token},
                         contentType: "application/x-www-form-urlencoded",
                         data: $("#purchase-form").serialize(),
                         dataType: "text",
                         url: "rest/orderingsystem/buy/"
                     }).done(function (data) {
-                                $("#message").text(data);
+                                purchaseMessage.text(data);
                             }
                     ).fail(function (event, jqxhr, settings, thrownError) {
-                                $("#message").text("Error requesting" + settings.url);
+                                if (jqxhr.status == 403) {
+                                    purchaseMessage.text("Permission denied.");
+                                } else {
+                                    purchaseMessage.text("Error requesting" + settings.url);
+                                }
                             }
                     );
                 });
@@ -98,6 +85,7 @@
 
 
     var dynatable = $('#bikes-table').dynatable({records:[]}).data('dynatable');
+
     function lookupBike() {
         var input;
         document.getElementById("message").innerText = "";

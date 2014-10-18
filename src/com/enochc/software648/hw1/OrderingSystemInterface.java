@@ -41,6 +41,7 @@ public interface OrderingSystemInterface extends Remote {
 
     /**
      * @param customerID
+     * @param password
      * @param firstname
      * @param lastname
      * @param street
@@ -49,9 +50,25 @@ public interface OrderingSystemInterface extends Remote {
      * @param zipcode
      * @return True if successful, false if customer name already taken
      */
-    public boolean newCustomer(String customerID, String firstname, String lastname, String street,
+    public boolean newCustomer(String customerID, String password, String firstname, String lastname, String street,
                                String city, String state, String zipcode) throws RemoteException;
 
+
+    /**
+     * @param customerID
+     * @param password
+     * @return Token that can be used to authenticate a customer.
+     *         Null if incorrect password or customer not found
+     */
+    String getToken(String customerID, String password) throws RemoteException;
+
+    /**
+     *
+     * @param customerID
+     * @param token
+     * @return true if matches, false if not
+     */
+    boolean checkToken(String customerID, String token) throws RemoteException;
 
     public CustomerInfo lookupCustomer(String customerID) throws RemoteException;
 

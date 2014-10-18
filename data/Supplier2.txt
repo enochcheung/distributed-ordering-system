@@ -443,7 +443,7 @@ The Zaskar is one of the longest running models in mountain bike history. The re
 #31-1662
 
 Mountain Bike 
-inventory=2
+inventory=0
 $2,399.99
 2014 Diamondback Sortie 1.0 29er Mountain Bike
 
@@ -1105,7 +1105,7 @@ The Fuji Tahoe 1.5 27.5" mountain bike boasts a more-than-impressive frame and f
 #31-1561
 
 Mountain Bike 
-inventory=4
+inventory=3
 $2,499.99
 Diamondback Overdrive Sport Carbon 29er Mountain Bike - 2014 Performance Exclusive
 
@@ -1394,7 +1394,7 @@ As experts in the bike-meets-dirt world, Diamondback has been engineering amazin
 #31-1763
 
 Mountain Bike 
-inventory=2
+inventory=0
 $1,699.99
 Diamondback Recoil Pro 29 29er Mountain Bike - 2014
 
@@ -1540,7 +1540,7 @@ The Charge Cooker 3 steps up to the task at hand and features the plush, smooth 
 #31-1988
 
 Mountain Bike 
-inventory=4
+inventory=2
 $899.99
 Charge Cooker SS 29er Mountain Bike - 2014
 

@@ -64,7 +64,9 @@ public class OrderingSystemController {
             }
             try {
                 wait(1000);
-            } catch (InterruptedException e) {e.printStackTrace();}
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -121,8 +123,19 @@ public class OrderingSystemController {
     @Path("/auth")
     @Produces("text/html")
     public String auth(@HeaderParam("customerID") String customerID, @HeaderParam("password") String password) {
+        connect();
+        String token = null;
+        try {
+            token = orderingSystem.getToken(customerID, password);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            throw new WebApplicationException(404);
+        }
+        if (token == null) {
+            throw new WebApplicationException(403);
+        }
 
-        return "received "+customerID+" "+password;
+        return token;
     }
 
     @GET
@@ -173,12 +186,17 @@ public class OrderingSystemController {
     @POST
     @Path("/buy")
     @Produces("text/plain")
-    public String purchaseBike(@FormParam("customerID") String customerID,
-                             @FormParam("itemNum") String itemNum,
-                             @FormParam("quantity") String quantity) {
+    public String purchaseBike(@HeaderParam("customerID") String customerID,
+                               @HeaderParam("token") String token,
+                               @FormParam("itemNum") String itemNum,
+                               @FormParam("quantity") String quantity) {
         connect();
         try {
-            if (customerID == null || itemNum == null
+            if (customerID == null | token == null | !orderingSystem.checkToken(customerID, token)) {
+                throw new WebApplicationException(403);
+            }
+
+            if (itemNum == null
                     || quantity == null) {
                 return "Fields missing.";
             }
@@ -186,20 +204,20 @@ public class OrderingSystemController {
             int quantInt = 0;
             try {
                 quantInt = Integer.parseInt(quantity);
-            } catch (NumberFormatException e){
+            } catch (NumberFormatException e) {
                 return "Quantity must be an integer";
             }
             if (quantInt <= 0) {
                 return "Quantity must be > 0";
             }
 
-            String orderID = orderingSystem.purchase(customerID, itemNum,quantInt);
+            String orderID = orderingSystem.purchase(customerID, itemNum, quantInt);
 
-            if (orderID==null) {
+            if (orderID == null) {
                 return "Order failed (customer not found, item not found, or insufficient stock)";
             }
 
-            return "Order successfully placed. OrderID: "+orderID;
+            return "Order successfully placed. OrderID: " + orderID;
 
 
         } catch (RemoteException e) {
@@ -212,14 +230,8 @@ public class OrderingSystemController {
     @GET
     @Path("/customer/{customerID}")
     @Produces("text/plain")
-    public String lookupCustomer(@Context SecurityContext sc, @PathParam("customerID") String customerID) {
+    public String lookupCustomer(@PathParam("customerID") String customerID) {
         connect();
-
-        // check that the user is accessing his own info
-        if (!sc.getUserPrincipal().getName().equals(customerID)) {
-            // user doesn't match customerID
-            throw new WebApplicationException(403);
-        }
 
         try {
             CustomerInfo customerInfo = orderingSystem.lookupCustomer(customerID);
@@ -227,7 +239,7 @@ public class OrderingSystemController {
                 throw new WebApplicationException(404);
             }
 
-            return customerID+"\n"+customerInfo.getCustomerAddress().toString();
+            return customerID + "\n" + customerInfo.getCustomerAddress().toString();
 
 
         } catch (RemoteException e) {
@@ -241,6 +253,7 @@ public class OrderingSystemController {
     @Path("/customer/new/")
     @Produces("text/plain")
     public String lookupBike(@FormParam("customerID") String customerID,
+                             @FormParam("password") String password,
                              @FormParam("first") String firstname,
                              @FormParam("last") String lastname,
                              @FormParam("street") String street,
@@ -256,7 +269,7 @@ public class OrderingSystemController {
                 System.out.println("null field encountered when adding customer");
                 return "Fields missing.";
             }
-            boolean successful = orderingSystem.newCustomer(customerID, firstname,
+            boolean successful = orderingSystem.newCustomer(customerID, password, firstname,
                     lastname, street, city, state, zipcode);
 
             if (!successful) {

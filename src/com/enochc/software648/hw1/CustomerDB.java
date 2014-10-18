@@ -5,9 +5,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -15,7 +19,9 @@ import org.json.simple.JSONValue;
 public class CustomerDB {
 	private static final String FILENAME = "data/CustomerDB.txt";
 	private static final String TMP_FILENAME = "data/CustomerDB.tmp";
+    private SecureRandom random = new SecureRandom();
 
+    private final Map<String,String> tokenMap = new HashMap<String, String>();
 	private final JSONObject database;
 
 	public CustomerDB() {
@@ -47,6 +53,7 @@ public class CustomerDB {
 	public boolean hasCustomer(String customerID) {
 		return database.containsKey(customerID);
 	}
+
 
 	/**
 	 * 
@@ -90,7 +97,9 @@ public class CustomerDB {
 
 	}
 
-	/**
+
+
+    /**
 	 * @param customerID
 	 * @return Customer information. Null if not found
 	 */

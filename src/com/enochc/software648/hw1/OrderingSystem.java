@@ -8,7 +8,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,6 +19,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
     private final HashMap<String, BikeCache> suppliersCache;
     private final Map<String, String> suppliersPrefixMap;
     private final CustomerDB customerDB;
+    private final CustomerLoginDB customerLoginDB;
     private final OrderDB orderDB;
 
     /**
@@ -59,11 +59,11 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
             } else if (args[0].equals("newCustomer")) {
                 parseNewCustomer(stripHead(args));
             } else if (args[0].equals("lookupCustomer")) {
-                lookupCustomer(stripHead(args));
+                parseLookupCustomer(stripHead(args));
             } else if (args[0].equals("lookupOrder")) {
                 parseLookupOrder(stripHead(args));
             } else if (args[0].equals("completeOrder")) {
-                completeOrder(stripHead(args));
+                parseCompleteOrder(stripHead(args));
             } else if (args[0].equals("orderHistory")) {
                 parseOrderHistory(stripHead(args));
             } else if (args[0].equals("listCustomers")) {
@@ -103,6 +103,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
         suppliersPrefixMap = new HashMap<String, String>();
         suppliersCache = new HashMap<String, BikeCache>();
         customerDB = new CustomerDB();
+        customerLoginDB = new CustomerLoginDB();
         orderDB = new OrderDB();
 
         // look up suppliers
@@ -435,7 +436,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
             System.out.println("Zip code?");
             String zipcode = inputReader.readLine();
 
-            newCustomer(customerID, firstname,
+            newCustomer(customerID, "hunter2", firstname,
                     lastname, street, city, state, zipcode);
             System.out.println("Customer " + customerID + " added.");
         } catch (IOException e) {
@@ -445,17 +446,28 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
     }
 
     @Override
-    public boolean newCustomer(String customerID, String firstname, String lastname, String street,
+    public boolean newCustomer(String customerID, String password, String firstname, String lastname, String street,
                                String city, String state, String zipcode) {
-        if (customerDB.hasCustomer(customerID)) {
+        if (customerDB.hasCustomer(customerID) || customerLoginDB.hasCustomer(customerID)) {
             System.out.println(customerID + " already taken.");
             return false;
         }
         CustomerInfo customerInfo = new CustomerInfo(customerID, firstname,
                 lastname, street, city, state, zipcode);
         customerDB.addCustomer(customerID, customerInfo);
+        customerLoginDB.addCustomer(customerID, password);
         System.out.println("Customer " + customerID + " added.");
         return true;
+    }
+
+    @Override
+    public String getToken(String customerID, String password) {
+        return customerLoginDB.getToken(customerID, password);
+    }
+
+    @Override
+    public boolean checkToken(String customerID, String token) {
+        return customerLoginDB.checkToken(customerID,token);
     }
 
     @Override
@@ -463,7 +475,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
         return customerDB.lookup(customerID);
     }
 
-    private void lookupCustomer(String[] args) {
+    private void parseLookupCustomer(String[] args) {
         if (args.length != 1) {
             System.out
                     .println("Invalid number of parameters. Format: lookupCustomer customerID");
@@ -525,7 +537,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
         return customerDB.lookupShipping(customerID);
     }
 
-    private void completeOrder(String[] args) {
+    private void parseCompleteOrder(String[] args) {
         if (args.length != 1) {
             System.out
                     .println("Invalid number of parameters. Format: completeOrder orderID");
