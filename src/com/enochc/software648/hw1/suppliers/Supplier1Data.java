@@ -1,14 +1,8 @@
 package com.enochc.software648.hw1.suppliers;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.io.PrintWriter;
+import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,23 +11,32 @@ import com.enochc.software648.hw1.SupplierData;
 
 public class Supplier1Data implements SupplierData {
 	private static final String NAME = "supplier1";
-	private static final String TMP_FILENAME = "data/Supplier1.tmp";
-	private static final String FILENAME = "data/Supplier1.txt";
+	private static final String TMP_FILENAME = "data/Warehouse1.tmp";
+	private static final String FILENAME = "data/Warehouse1.txt";
+    private static final String INV_FILENAME = "data/Inventory1.txt";
+    private static final String TMP_INV_FILENAME = "data/Inventory1.tmp";
+
     private static final String SUPPLIER_PREFIX = "S1";
+
     private static final Pattern pricePattern = Pattern
-			.compile("^bike price=\\$(.*)");
+			.compile("^bike price[ ]*=[ ]*\\$(.*)");
 	private static final Pattern namePattern = Pattern
-			.compile("^bike name=(.*)");
+			.compile("^bike name[ ]*=[ ]*(.*)");
 	private static final Pattern itemNumberPattern = Pattern
-			.compile("^item number=#(.*)");
+			.compile("^item number[ ]*=[ ]*#(.*)");
     private static final Pattern externalItemNumberPattern = Pattern
             .compile("^([a-zA-Z0-9]{2})-([0-9]{2}-[0-9]{4}$)");
+    private static final Pattern descriptionPattern = Pattern
+            .compile("^(bike )?description[ ]*=");
 	private static final Pattern categoryPattern = Pattern
-			.compile("^category=(.*)");
-	private static final Pattern inventoryPattern = Pattern
-			.compile("^inventory=(.*)");
+			.compile("^category[ ]*=[ ]*(.*)");
+
+    private static final Pattern oldInventoryPattern = Pattern
+            .compile("^inventory[ ]*=[ ]*(.*)");
 
 	private LineNumberReader reader;
+    private LineNumberReader inventoryReader;
+    private Map<String,Integer> lineNumberMap = new HashMap<String,Integer>();
 
 	@Override
 	public String getName() {
@@ -60,15 +63,39 @@ public class Supplier1Data implements SupplierData {
 		}
 	}
 
+    private void openInventoryReader() throws FileNotFoundException {
+        InputStream in = new FileInputStream(new File(INV_FILENAME));
+        inventoryReader = new LineNumberReader(new InputStreamReader(in));
+    }
+
+    private void closeInventoryReader() {
+        try {
+            inventoryReader.close();
+        } catch (IOException e) {
+        }
+    }
+
 	@Override
 	public Bike readBike() throws IOException {
 		String line;
 
 		// Read the price
 		line = readNonemptyLine();
-		if (line == null) {
-			return null;
-		}
+        if (line == null) {
+            return null;
+        }
+
+        // skip over old inventory entries
+        Integer inventory=null;
+        Matcher matcher = oldInventoryPattern.matcher(line);
+        if (matcher.matches()) {
+            inventory = Integer.parseInt(matcher.group(1));
+            line = readNonemptyLine();
+            if (line == null) {
+                return null;
+            }
+        }
+
 		int price = readPrice(line);
 
 		// Read the bike name
@@ -80,7 +107,8 @@ public class Supplier1Data implements SupplierData {
 
 		// Read the bike description (could be missing, or multi-line)
 		line = readNonemptyLine();
-		if (!line.equals("bike description=")) {
+        matcher = descriptionPattern.matcher(line);
+		if (!matcher.matches()) {
 			throw new IOException("Bike description expected");
 		}
 		StringBuilder descriptionBuilder = new StringBuilder();
@@ -109,26 +137,81 @@ public class Supplier1Data implements SupplierData {
 		}
 		String category = readCategory(line);
 
-		// Read the inventory
-		line = readNonemptyLine();
-		if (line == null) {
-			return null;
-		}
-		int inventory = readInventory(line);
-		int inventoryLineNumber = reader.getLineNumber();
 
-		Bike bike = new Bike(price, name, description, externalItemNumber, this.getName(), category,
-				inventory, inventoryLineNumber);
+        /*
+        // print out inventory for transfer
+        System.out.println("item number=#"+internalItemNumber);
+        if (inventory != null) {
+            System.out.println(inventory);
+        }
+        System.out.println("");
+        */
+
+        Bike bike = new Bike(price, name, description, externalItemNumber, this.getName(), category, 0);
 		return bike;
 	}
 
-	@Override
-	public void writeInventory(Bike bike, int newInventory) throws IOException {
-		int targetLineNumber = bike.getInventoryLineNumber();
-		String replacementLine = "inventory=" + newInventory;
+    @Override
+    public Map<String,Integer> getInventory() throws IOException {
+        Map<String,Integer> map = new HashMap<String, Integer>();
+        this.openInventoryReader();
 
-		File tmpFile = new File(TMP_FILENAME);
-		File dataFile = new File(FILENAME);
+        String line = readNonemptyLine(inventoryReader);
+        while (line != null) {
+            String internalItemNumber = readItemNumber(line);
+
+            if (internalItemNumber == null) {
+                throw new IOException("Item number expected.");
+            }
+            String externalItemNumber = SUPPLIER_PREFIX+"-"+internalItemNumber;
+
+
+
+            line = readNonemptyLine(inventoryReader);
+            if (line == null) {
+                throw new IOException("Unexpected end of file.");
+            }
+
+            Integer inventory = readInventory(line);
+            if (inventory == null) {
+                throw new IOException("Inventory number expected.");
+            }
+            int lineNumber = inventoryReader.getLineNumber();
+            lineNumberMap.put(externalItemNumber,lineNumber);
+            map.put(externalItemNumber,inventory);
+
+            line = readNonemptyLine(inventoryReader);
+        }
+
+        this.closeInventoryReader();
+
+        return map;
+    }
+
+    private String readNonemptyLine(BufferedReader reader1) throws IOException{
+        String line;
+        do {
+            line = reader1.readLine();
+            if (line == null) {
+                return null;
+            }
+            line = line.trim();
+        } while (line.length() == 0);
+
+        return line;
+    }
+
+	@Override
+	public void writeInventory(Bike bike, Integer newInventory) throws IOException {
+		Integer targetLineNumber = lineNumberMap.get(bike.getItemNumber());
+		if (targetLineNumber==null) {
+            throw new IOException("Line number not found!");
+        }
+
+        String replacementLine = newInventory.toString();
+
+		File tmpFile = new File(TMP_INV_FILENAME);
+		File dataFile = new File(INV_FILENAME);
 
 		LineNumberReader reader = new LineNumberReader(new InputStreamReader(
 				new FileInputStream(dataFile)));
@@ -166,8 +249,16 @@ public class Supplier1Data implements SupplierData {
 		return line;
 	}
 
+    /**
+     * Reads price in cents
+     *
+     * @param line
+     * @return price in cents
+     * @throws IOException
+     */
 	private int readPrice(String line) throws IOException {
 		// read price in cents
+
 		Matcher matcher = pricePattern.matcher(line);
 		if (!matcher.matches()) {
 			throw new IOException("Bike price expected in \"" + line + "\"");
@@ -212,12 +303,11 @@ public class Supplier1Data implements SupplierData {
 	}
 
 	private Integer readInventory(String line) throws IOException {
-		Matcher matcher = inventoryPattern.matcher(line);
-		if (!matcher.matches()) {
+		try {
+            return Integer.parseInt(line);
+        } catch (NumberFormatException e){
 			throw new IOException("Inventory number expected in \"" + line
 					+ "\"");
 		}
-		String inventory = matcher.group(1);
-		return Integer.parseInt(inventory);
-	}
+    }
 }

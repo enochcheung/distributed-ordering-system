@@ -11,23 +11,10 @@
 
 <body>
 <div id="frame">
-    <h3>Customer Lookup</h3>
-    <span>CustomerID: </span><input id="customerID-input" type="text">
-    <button type="button" onclick="lookupCustomer()">Lookup Customer</button>
-    <br>
-    <br>
-<!--
-    <h3>Order Lookup</h3>
-
-    <form id="order-lookup-form" action="">
-        CustomerID: <input type="text" name="customerID"/> <br>
-        Bike Item Number: <input type='text' name='itemNum'/> <br>
-        Quantity: <input type='text' name='quantity'/> <br>
-        <button type="submit">Buy</button>
-    </form>
-    <br>
--->
     <p id="message"></p>
+    <button type="button" id="refresh">Refresh</button>
+    <br>
+    <p id="address-text"></p>
 
     <br>
 
@@ -51,60 +38,55 @@
 
 </div>
 <script>
-    $(document).ajaxError(function (event, jqxhr, settings, thrownError) {
-        document.getElementById("message").innerText = "Error requesting " + settings.url;
+    $(document).ready(function() {
+        lookupCustomer();
+        $("#refresh").on("click",function(e) {
+            lookupCustomer();
+        });
     });
-
-    $(document).ready(
-            function () {
-                $("#orders-form").on("submit", function (e) {
-                    e.preventDefault();
-                    $("#message").text("");
-                    $.ajax({
-                        type: "GET",
-                        data: $("#orders-form").serialize().get("customerID"),
-                        dataType: "text",
-                        url: "rest/orderingsystem/buy/"
-                    }).done(function (data) {
-                                $("#message").text(data);
-                            }
-                    ).fail(function (event, jqxhr, settings, thrownError) {
-                                $("#message").text("Error requesting" + settings.url);
-                            }
-                    );
-                });
-            }
-    );
-
     var dynatable = $('#orders-table').dynatable({records: []}).data('dynatable');
 
-    function orderHistory(customerID) {
+    var message = $("#message");
+    var addressText = $("#address-text");
+
+
+
+    function lookupCustomer() {
+        message.text("");
+        var customerID = window.sessionStorage.getItem("customerID");
+        var token = window.sessionStorage.getItem("token");
+
+        if (customerID === null || token === null) {
+            message.text("Login required.");
+            return;
+        }
+
         $.ajax({
             type: "GET",
+            headers: {"customerID":customerID,"token":token},
+            url: "rest/orderingsystem/customer/" + customerID
+        }).done(function (data) {
+            document.getElementById("address-text").innerText = data;
+        }).fail(function () {
+                message.text(customerID+" not found.");
+            }
+        );
+
+        $.ajax({
+            type: "GET",
+            headers: {"customerID":customerID,"token":token},
             datatype: "json",
             url: "rest/orderingsystem/orderhistory/" + customerID,
-            success: function (data) {
-                dynatable.settings.dataset.originalRecords=data;
-                dynatable.process();
-            },
             fail: function () {
-                document.getElementById("message").innerText = input+" not found.";
+                message.text(customerID+" not found.");
             }
-        });
-    }
-    function lookupCustomer() {
-        var input;
-        document.getElementById("message").innerText = "";
-        input = document.getElementById("customerID-input").value;
-        $.ajax({
-            type: "GET",
-            url: "rest/orderingsystem/customer/" + input
-        }).done(function (data) {
-            document.getElementById("message").innerText = data;
+        }).done(function(data) {
+            dynatable.settings.dataset.originalRecords=data;
+            dynatable.process();
         });
 
-        orderHistory(input);
     }
+
 
 </script>
 </body>

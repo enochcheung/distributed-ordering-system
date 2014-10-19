@@ -13,11 +13,9 @@ public class Bike implements Serializable{
     private String supplierName;
     private String category;
 	private int inventory;
-	private int inventoryLineNumber;
 
 	public Bike(int price, String name, String description,
-			String itemNumber, String supplierName, String category, int inventory,
-			int inventoryLineNumber) {
+			String itemNumber, String supplierName, String category, int inventory) {
 		this.price = price;
 		this.name = name;
 		this.description = description;
@@ -25,7 +23,7 @@ public class Bike implements Serializable{
         this.supplierName = supplierName;
 		this.category = category;
 		this.inventory = inventory;
-		this.inventoryLineNumber = inventoryLineNumber;
+		// this.inventoryLineNumber = inventoryLineNumber;
 	}
 
 	/**
@@ -71,10 +69,6 @@ public class Bike implements Serializable{
 
 	public void setInventory(int n) {
 		inventory = n;
-	}
-	
-	public int getInventoryLineNumber() {
-		return inventoryLineNumber;
 	}
 
 	public String toString() {

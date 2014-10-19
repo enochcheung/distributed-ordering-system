@@ -230,10 +230,16 @@ public class OrderingSystemController {
     @GET
     @Path("/customer/{customerID}")
     @Produces("text/plain")
-    public String lookupCustomer(@PathParam("customerID") String customerID) {
+    public String lookupCustomer(@HeaderParam("customerID") String customerID,
+                                 @HeaderParam("token") String token,
+                                 @PathParam("customerID") String customerID2) {
         connect();
 
         try {
+            if (customerID == null | token == null | !orderingSystem.checkToken(customerID, token)) {
+                throw new WebApplicationException(403);
+            }
+
             CustomerInfo customerInfo = orderingSystem.lookupCustomer(customerID);
             if (customerInfo == null) {
                 throw new WebApplicationException(404);
@@ -334,9 +340,15 @@ public class OrderingSystemController {
     @GET
     @Path("/orderhistory/{customerID}")
     @Produces("application/json")
-    public String orderHistory(@PathParam("customerID") String customerID) {
+    public String orderHistory(@HeaderParam("customerID") String customerID,
+                               @HeaderParam("token") String token,
+                               @PathParam("customerID") String customerID2) {
         connect();
         try {
+            if (customerID == null | token == null | !orderingSystem.checkToken(customerID, token)) {
+                throw new WebApplicationException(403);
+            }
+
             ArrayList<Order> orders = orderingSystem.orderHistory(customerID);
             if (orders == null) {
                 throw new WebApplicationException(404);

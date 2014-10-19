@@ -46,10 +46,16 @@ public class Supplier extends UnicastRemoteObject implements SupplierInterface {
 
 	private void loadInventory() throws IOException {
         currentDataVersion = UUID.randomUUID().toString();
-		data.openReader();
+        Map<String, Integer> inventoryMap = data.getInventory();
+        data.openReader();
 		Bike bike;
 		bike = data.readBike();
 		while (bike != null) {
+            Integer n = inventoryMap.get(bike.getItemNumber());
+            if (n != null) {
+                bike.setInventory(n);
+            }
+
 			inventory.put(bike.getItemNumber(), bike);
 			bikes.add(bike);
 

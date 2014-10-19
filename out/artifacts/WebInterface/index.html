@@ -25,7 +25,7 @@
             <label for="password">Password:</label> <input type='password' name="password" id="password"/>
             <button type="submit">Login</button>
         </form>
-        <label id="login-message"></label> <button type="submit" id="logout">Log out</button>
+        <label id="login-message"></label> <button type="button" id="logout">Log out</button>
     </div>
 </div>
 
@@ -69,6 +69,7 @@
                     window.sessionStorage.removeItem("customerID");
                     window.sessionStorage.removeItem("token");
                     document.getElementById("login-form").style.display = 'block';
+                    document.getElementById("logout").style.display = 'none';
                     $("#login-message").text("");
                 });
             }
