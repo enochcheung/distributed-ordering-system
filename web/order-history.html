@@ -23,6 +23,7 @@
         <table id="orders-table">
             <thead>
             <th>Customer</th>
+            <th>Order</th>
             <th>Item Number</th>
             <th>Date</th>
             <th>Status</th>
@@ -67,19 +68,23 @@
             url: "rest/orderingsystem/customer/" + customerID
         }).done(function (data) {
             document.getElementById("address-text").innerText = data;
-        }).fail(function () {
-                message.text(customerID+" not found.");
-            }
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+                    if (jqXHR.status == 403) {
+                        message.text("Permission denied. (try logging in again)");
+                    } else if (jqXHR.status == 404) {
+                        message.text(customerID + " not found.");
+                    } else {
+                        message.text("Error requesting "+event.url);
+                    }
+                }
         );
 
         $.ajax({
             type: "GET",
             headers: {"customerID":customerID,"token":token},
             datatype: "json",
-            url: "rest/orderingsystem/orderhistory/" + customerID,
-            fail: function () {
-                message.text(customerID+" not found.");
-            }
+            url: "rest/orderingsystem/orderhistory/" + customerID
+
         }).done(function(data) {
             dynatable.settings.dataset.originalRecords=data;
             dynatable.process();

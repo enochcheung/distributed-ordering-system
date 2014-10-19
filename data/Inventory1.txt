@@ -24,7 +24,7 @@ item number=#31-1707
 1
 
 item number=#31-1706
-9
+7
 
 item number = #31-1590
 2
@@ -53,7 +53,7 @@ item number=#31-1704
 0
 
 item number=#31-1476
-1
+5
 
 item number=#30-9045
 4
@@ -69,6 +69,9 @@ item number=#31-1477
 
 item number=#31-1646
 1
+
+item number=#31-1680
+3
 
 item number=#31-1999
 3
@@ -89,7 +92,7 @@ item number=#31-1678
 3
 
 item number=#31-1585
-3
+0
 
 item number=#31-2603
 3
@@ -254,7 +257,4 @@ item number=#31-0884
 3
 
 item number=#31-1299
-3
-
-item number=#31-3042
 3

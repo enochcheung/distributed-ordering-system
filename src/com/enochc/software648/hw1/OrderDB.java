@@ -78,6 +78,7 @@ public class OrderDB {
 		String date = (dateFormat.format(new Date()));
 		Order order = new Order(customerID, date, itemNumber, bikeName,
 				quantity, price);
+        order.setOrderID(orderID);
 
 		database.put(orderID, order.toJsonObject());
 		flushJSON();

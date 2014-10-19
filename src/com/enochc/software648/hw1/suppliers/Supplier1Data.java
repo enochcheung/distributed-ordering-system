@@ -138,13 +138,14 @@ public class Supplier1Data implements SupplierData {
 		String category = readCategory(line);
 
 
+
         /*
         // print out inventory for transfer
-        System.out.println("item number=#"+internalItemNumber);
         if (inventory != null) {
             System.out.println(inventory);
         }
         System.out.println("");
+        System.out.println("item number=#"+internalItemNumber);
         */
 
         Bike bike = new Bike(price, name, description, externalItemNumber, this.getName(), category, 0);

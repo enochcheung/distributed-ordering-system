@@ -86,6 +86,8 @@ public class OrderingSystemController {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("customer", order.getCustomerID());
         jsonObject.put("itemNumber", order.getItemNumber());
+        jsonObject.put("order", order.getOrderID());
+
         jsonObject.put("date", order.getDate());
         jsonObject.put("status", order.getStatus());
         jsonObject.put("bikeName", order.getBikeName());

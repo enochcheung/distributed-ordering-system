@@ -1,1 +1,1 @@
-{"NickLee":"password","enoch":"hunter2","fucku":"12345"}
+{"enoch":"hunter2"}
