@@ -1,6 +1,7 @@
 package com.enochc.software648.hw1;
 
 import java.io.Serializable;
+import java.util.HashMap;
 
 /**
  * Represents a request to purchase some quantity of a Bike, from OrderingSystem to Supplier.
@@ -9,27 +10,41 @@ import java.io.Serializable;
  **/
 public class PurchaseRequest implements Serializable{
     private static final long serialVersionUID = -4127555326115095091L;
-    private final String itemNumber;
-    private final int quantity;
+
+    private final String supplierName;
+    private final String customerID;
+    private final HashMap<String, Integer> bikeQuantities = new HashMap<String, Integer>();
     private final String orderID;
     transient private final OrderingSystem orderingSystem;
 
 
 
-    public PurchaseRequest(String itemNumber, int quantity, String orderID, OrderingSystem orderingSystem) {
-
-        this.itemNumber = itemNumber;
-        this.quantity = quantity;
+    public PurchaseRequest(String customerID, String orderID, String supplierName, OrderingSystem orderingSystem) {
+        this.supplierName = supplierName;
+        this.customerID = customerID;
         this.orderID = orderID;
         this.orderingSystem = orderingSystem;
     }
 
-    public String getItemNumber() {
-        return itemNumber;
+    public void addBike(String itemNum, int quantity) {
+        Integer amount = bikeQuantities.get(itemNum);
+        if (amount!= null) {
+            bikeQuantities.put(itemNum,amount+quantity);
+        } else {
+            bikeQuantities.put(itemNum, quantity);
+        }
     }
 
-    public int getQuantity() {
-        return quantity;
+    public String getSupplierName() {
+        return supplierName;
+    }
+
+    public String getCustomerID() {
+        return customerID;
+    }
+
+    public HashMap<String, Integer> getBikeQuantities() {
+        return bikeQuantities;
     }
 
     public String getOrderID() {

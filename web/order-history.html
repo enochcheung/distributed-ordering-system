@@ -11,30 +11,36 @@
 
 <body>
 <div id="frame">
+    <h3>Customer Info</h3>
     <p id="message"></p>
     <button type="button" id="refresh">Refresh</button>
     <br>
     <p id="address-text"></p>
 
     <br>
-
+    <h3>Order History</h3>
     <div id="table">
 
         <table id="orders-table">
             <thead>
             <th>Customer</th>
-            <th>Order</th>
             <th>Item Number</th>
+            <th>Bike Name</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Order Id</th>
             <th>Date</th>
             <th>Status</th>
-            <th>Bike Name</th>
-            <th>Quantity</th>
-            <th>Price</th>
+            <th>Total Price</th>
             </thead>
             <tbody>
             </tbody>
         </table>
     </div>
+
+    <br>
+    <h3>Inbox</h3>
+    <p id="inbox-text"></p>
 
 
 </div>
@@ -90,6 +96,14 @@
             dynatable.process();
         });
 
+
+        $.ajax({
+            type: "GET",
+            headers: {"customerID":customerID,"token":token},
+            url: "rest/orderingsystem/inbox/" + customerID
+        }).done(function (data) {
+            document.getElementById("inbox-text").innerText = data;
+        })
     }
 
 

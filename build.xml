@@ -1,102 +1,102 @@
 <?xml version="1.0"?>
 <project name="hw1" default="jar" basedir=".">
-	<property name="build.dir" value="build" />
-	<property name="main.build.dir" value="${build.dir}/main" />
-	<property name="main.src.dir" value="src" />
-	<property name="test.build.dir" value="${build.dir}/test" />
-	<property name="test.src.dir" value="test" />
-	<property name="deploy.dir" value="deploy" />
-    <property name="lib.dir" value="lib" />
+    <property name="build.dir" value="build"/>
+    <property name="main.build.dir" value="${build.dir}/main"/>
+    <property name="main.src.dir" value="src"/>
+    <property name="test.build.dir" value="${build.dir}/test"/>
+    <property name="test.src.dir" value="test"/>
+    <property name="deploy.dir" value="deploy"/>
+    <property name="lib.dir" value="lib"/>
 
 
     <!-- fully-qualified names for classes -->
-	<property name="supplier1.class" value="com.enochc.software648.hw1.Supplier1Server" />
-	<property name="supplier2.class" value="com.enochc.software648.hw1.Supplier2Server" />
-	<property name="orderingsystem.class" value="com.enochc.software648.hw1.OrderingSystem" />
+    <property name="supplier1.class" value="com.enochc.software648.hw1.Supplier1Server"/>
+    <property name="supplier2.class" value="com.enochc.software648.hw1.Supplier2Server"/>
+    <property name="orderingsystem.class" value="com.enochc.software648.hw1.OrderingSystem"/>
 
-	<path id="classpath.base">
+
+    <path id="classpath.base">
         <fileset dir="${lib.dir}" includes="**/*.jar"/>
+
         <!--
 		<pathelement location="lib/json-simple-1.1.1.jar" />
 		<pathelement location="${main.build.dir}" />
         -->
-	</path>
+    </path>
 
-	<target name="init">
-		<!-- Create the time stamp -->
-		<tstamp />
-		<!-- Create the build directory structure used by compile -->
-		<mkdir dir="${build.dir}" />
-	</target>
+    <manifestclasspath property="orderingsystem.manifest" jarfile="OrderingSystem.jar">
+        <classpath refid="classpath.base"/>
+    </manifestclasspath>
 
-	<target name="compile" depends="init" description="compile the source">
-		<mkdir dir="${main.build.dir}" />
-		<javac srcdir="${main.src.dir}" destdir="${main.build.dir}" includeantruntime="false">
-			<classpath refid="classpath.base" />
-		</javac>
-		<echo message="build done" />
-	</target>
 
-	<target name="jar" depends="compile">
-		<jar destfile="Supplier1Server.jar" filesetmanifest="mergewithoutmain">
-					<manifest>
-						<attribute name="Main-Class" value="${supplier1.class}" />
-						<attribute name="Class-Path" value="." />
-					</manifest>
-					<fileset dir="${main.build.dir}" />
+    <manifestclasspath property="supplier1.manifest" jarfile="Supplier1Server.jar">
+        <classpath refid="classpath.base"/>
+    </manifestclasspath>
 
-				</jar>
-		
-		<jar destfile="Supplier2Server.jar" filesetmanifest="mergewithoutmain">
-					<manifest>
-						<attribute name="Main-Class" value="${supplier2.class}" />
-						<attribute name="Class-Path" value="." />
-					</manifest>
-					<fileset dir="${main.build.dir}" />
 
-				</jar>
-		
-		<jar destfile="OrderingSystem.jar" filesetmanifest="mergewithoutmain">
-			<manifest>
-				<attribute name="Main-Class" value="${orderingsystem.class}" />
-				<attribute name="Class-Path" value="." />
-			</manifest>
-			<fileset dir="${main.build.dir}" />
+    <manifestclasspath property="supplier2.manifest" jarfile="Supplier2Server.jar">
+        <classpath refid="classpath.base"/>
+    </manifestclasspath>
 
-		</jar>
-	</target>
+    <target name="init">
+        <!-- Create the time stamp -->
+        <tstamp/>
+        <!-- Create the build directory structure used by compile -->
+        <mkdir dir="${build.dir}"/>
+    </target>
 
-	<target name="dist" depends="compile" description="generate the distribution">
-		<!-- Create the distribution directory -->
-		<mkdir dir="${deploy.dir}" />
-		<!-- Put everything in ${build} into the ${ant.project.name}-${DSTAMP}.jar file -->
-		<jar jarfile="${deploy.dir}/${ant.project.name}-${DSTAMP}.jar" basedir="${main.build.dir}" />
-	</target>
+    <target name="compile" depends="init" description="compile the source">
+        <mkdir dir="${main.build.dir}"/>
+        <javac srcdir="${main.src.dir}" destdir="${main.build.dir}" includeantruntime="false">
+            <classpath refid="classpath.base"/>
+        </javac>
+        <echo message="build done"/>
+    </target>
 
-	<target name="supplier1" depends="compile" description="start Supplier1Server">
-		<java fork="false" classname="${supplier1.class}">
-			<classpath refid="classpath.base" />
-		</java>
-	</target>
+    <target name="jar" depends="compile">
 
-	<target name="supplier2" depends="compile" description="start Supplier2Server">
-		<java fork="false" classname="${supplier2.class}">
-			<classpath refid="classpath.base" />
-		</java>
-	</target>
 
-	<target name="orderingsystem" depends="compile" description="start OrderingSystem">
-		<java fork="false" classname="${orderingsystem.class}">
-			<classpath refid="classpath.base" />
-		</java>
-	</target>
+        <jar destfile="Supplier1Server.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="${supplier1.class}"/>
+                <attribute name="Class-Path" value="${supplier1.manifest}"/>
+            </manifest>
+            <fileset dir="${main.build.dir}"/>
 
-	<!-- Delete all build files -->
-	<!-- To run this: use "ant clean" -->
-	<target name="clean">
-		<delete dir="${build.dir}" />
-		<delete dir="${deploy.dir}" />
-		<echo message="clean done" />
-	</target>
+        </jar>
+
+        <jar destfile="Supplier2Server.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="${supplier2.class}"/>
+                <attribute name="Class-Path" value="${supplier2.manifest}"/>
+            </manifest>
+            <fileset dir="${main.build.dir}"/>
+
+        </jar>
+
+        <jar destfile="OrderingSystem.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="${orderingsystem.class}"/>
+                <attribute name="Class-Path" value="${orderingsystem.manifest}"/>
+            </manifest>
+            <fileset dir="${main.build.dir}"/>
+
+        </jar>
+    </target>
+
+    <target name="dist" depends="compile" description="generate the distribution">
+        <!-- Create the distribution directory -->
+        <mkdir dir="${deploy.dir}"/>
+        <!-- Put everything in ${build} into the ${ant.project.name}-${DSTAMP}.jar file -->
+        <jar jarfile="${deploy.dir}/${ant.project.name}-${DSTAMP}.jar" basedir="${main.build.dir}"/>
+    </target>
+
+    <!-- Delete all build files -->
+    <!-- To run this: use "ant clean" -->
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+        <delete dir="${deploy.dir}"/>
+        <echo message="clean done"/>
+    </target>
 
 </project>

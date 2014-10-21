@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browse</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <link rel="stylesheet" type="text/css" href="jquery.dynatable.css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="jquery.dataTables.min.js"></script>
+    <script src="jquery.dynatable.js"></script>
+</head>
+
+
+<body>
+<div id="frame">
+    <h3>Cart</h3>
+
+    <div class="table">
+        <table id="cart-table">
+            <thead>
+            <th>Item Number</th>
+            <th>Quantity</th>
+            <th> </th>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <form id="cart-form" action="">
+        Bike Item Number: <input type='text' name='itemNum'/>
+        Quantity: <input type='text' name='quantity'/>
+        <button type="submit">Add to cart</button>
+    </form>
+    <button type="button" id="buy-button">Buy cart</button>
+    <p id="purchase-message"></p>
+
+    <br>
+
+    <h3>Bike Lookup</h3>
+    <span>Item Number: </span><input id="input" type="text">
+    <button type="button" onclick="lookupBike()">Lookup Bike</button>
+    <p id="message"></p>
+
+    <br>
+
+    <div class="table">
+        <table id="bikes-table">
+            <thead>
+            <th>Item Number</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Inv</th>
+            <th>Price</th>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    var purchaseMessage = $("#purchase-message");
+
+    $(document).ready(
+            function() {
+                $("#buy-button").on("click", function(e) {
+                    buy();
+                })
+            }
+    );
+
+    var cartForm = $("#cart-form");
+    $(document).ready(
+            function () {
+                $("#cart-form").on("submit", function (e) {
+                    e.preventDefault();
+                    purchaseMessage.text("");
+                    var itemNumber = cartForm.find("input[name=itemNum]").val();
+                    var quantity = parseInt(cartForm.find("input[name=quantity]").val());
+                    if (isNaN(quantity) || quantity < 1) {
+                        purchaseMessage.text("Quantity must be an integer > 0");
+                        return;
+                    }
+                    console.log("Add to cart: " + itemNumber + " x " + quantity);
+                    addToCart(itemNumber, quantity);
+                });
+
+                renderCart();
+            }
+    );
+
+
+    var dynatable = $('#bikes-table').dynatable({records: []}).data('dynatable');
+
+    function lookupBike() {
+        var input;
+        document.getElementById("message").innerText = "";
+        input = document.getElementById("input").value;
+
+        $.ajax({
+            type: "GET",
+            datatype: "json",
+            url: "rest/orderingsystem/bike/" + input,
+            success: function (data) {
+                dynatable.settings.dataset.originalRecords = [data];
+                dynatable.process();
+            },
+            fail: function () {
+                document.getElementById("message").innerText = input + " not found.";
+            }
+        });
+    }
+
+    function renderCart() {
+        var jsonString = window.sessionStorage.getItem("cart");
+        var jsonObj = JSON.parse(jsonString);
+
+        var table = document.getElementById("cart-table").getElementsByTagName('tbody')[0];
+
+        // clear table
+        for (var i = table.rows.length-1; i >= 0; i--) {
+            table.deleteRow(i);
+        }
+
+        // insert items from cart
+        for (var itemNumber in jsonObj) {
+            var row = table.insertRow(table.rows.length);
+            var cell1 = row.insertCell(0);
+            var cell2 = row.insertCell(1);
+            var cell3 = row.insertCell(2);
+            cell1.innerHTML = itemNumber;
+            cell2.innerHTML = jsonObj[itemNumber];
+            cell3.innerHTML = '<input type="button" value = "Remove" onClick="removeFromCart(\''+itemNumber+'\')">';
+        }
+
+
+    }
+
+    function removeFromCart(itemNumber) {
+        var jsonString = window.sessionStorage.getItem("cart");
+        var jsonObj = JSON.parse(jsonString);
+        if (jsonObj === null) {
+            return;
+        }
+        delete jsonObj[itemNumber];
+
+        jsonString = JSON.stringify(jsonObj);
+        window.sessionStorage.setItem("cart", jsonString);
+
+        renderCart();
+    }
+
+    function addToCart(itemNumber, quantity) {
+        var jsonString = window.sessionStorage.getItem("cart");
+        var jsonObj = JSON.parse(jsonString);
+        if (jsonObj === null) {
+            jsonObj = {};
+        }
+
+         if (!(itemNumber in jsonObj)) {
+            jsonObj[itemNumber] = quantity;
+         } else {
+            jsonObj[itemNumber] = jsonObj[itemNumber] + quantity;
+         }
+
+        jsonString = JSON.stringify(jsonObj);
+        window.sessionStorage.setItem("cart", jsonString);
+
+        renderCart();
+    }
+
+    function buy() {
+        purchaseMessage.text("");
+        var customerID = window.sessionStorage.getItem("customerID");
+        var token = window.sessionStorage.getItem("token");
+
+        if (customerID === null || token === null) {
+            purchaseMessage.text("Login required.");
+            return;
+        }
+
+        var cartJsonString = window.sessionStorage.getItem("cart");
+        if (cartJsonString === null || cartJsonString == "{}") {
+            purchaseMessage.text("Cart must not be empty.");
+            return;
+        }
+
+        $.ajax({
+            type: "POST",
+            headers: {"customerID": customerID, "token": token},
+            contentType: "application/x-www-form-urlencoded",
+            data: {"jsonString": cartJsonString},
+            dataType: "text",
+            url: "rest/orderingsystem/buy/"
+        }).done(function (data) {
+                    purchaseMessage.text(data);
+                }
+        ).fail(function (jqXHR, textStatus, errorThrown) {
+                    if (jqXHR.status == 403) {
+                        purchaseMessage.text("Permission denied. (try logging in again)");
+                    } else {
+                        purchaseMessage.text("Error requesting" + settings.url);
+                    }
+                }
+        );
+    }
+
+</script>
+</body>
+</html>

@@ -8,31 +8,35 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 
 public class Order implements Serializable {
-    private static final long serialVersionUID = 39429849349L;
+    private static final long serialVersionUID = -2778420502724580525L;
 
     private String customerID;
     private String orderID;
 	private String date;
 	private String status;
     private final HashMap<String,Integer> bikeQuantities = new HashMap<String, Integer>();
+    private final HashMap<String,Integer> bikePrices = new HashMap<String, Integer>();
     private final HashMap<String,String> bikeNames = new HashMap<String, String>();
-	private int price;
+    private final HashMap<String,BigDecimal> bikePricesDollars = new HashMap<String, BigDecimal>();
+
+    private int totalPrice;
 
 	public Order(String customerID, String date, String itemNumber,
 			String bikeName, int quantity, int price) {
 		this.customerID = customerID;
 		this.date = date;
-		this.price = price;
+		this.totalPrice = price;
         bikeQuantities.put(itemNumber, quantity);
         bikeNames.put(itemNumber,bikeName);
 
 		setInProcess();
 	}
 
-    public Order(String customerID, String date) {
+    public Order(String customerID, String date, String orderID) {
         this.customerID = customerID;
         this.date = date;
-        this.price = 0;
+        this.orderID = orderID;
+        this.totalPrice = 0;
 
         setInProcess();
     }
@@ -48,10 +52,16 @@ public class Order implements Serializable {
             String itemNum = (String) bikeObject.get("itemNumber");
             String bikeName = (String) bikeObject.get("bikeName");
             int quantity = ((Number) bikeObject.get("quantity")).intValue();
+            int price = ((Number) bikeObject.get("price")).intValue();
             bikeQuantities.put(itemNum,quantity);
             bikeNames.put(itemNum,bikeName);
+            bikePrices.put(itemNum,price);
+
+            BigDecimal priceDecimal = new BigDecimal(price);
+            BigDecimal priceDollars = priceDecimal.divide(new BigDecimal(100));
+            bikePricesDollars.put(itemNum,priceDollars);
         }
-		this.price = ((Number) jsonObject.get("price")).intValue();
+		this.totalPrice = ((Number) jsonObject.get("totalPrice")).intValue();
 
 	}
 
@@ -74,10 +84,13 @@ public class Order implements Serializable {
     public void addBike(Bike bike, int quantity) {
         String itemNum = bike.getItemNumber();
         String bikeName = bike.getName();
+        int bikePrice = bike.getPrice();
         bikeQuantities.put(itemNum, quantity);
         bikeNames.put(itemNum,bikeName);
+        bikePrices.put(itemNum,bikePrice);
+        bikePricesDollars.put(itemNum,bike.getPriceDollars());
 
-        price += bike.getPrice()*quantity;
+        totalPrice += bikePrice*quantity;
     }
 
     /**
@@ -107,12 +120,28 @@ public class Order implements Serializable {
         return bikeQuantities.get(this.getItemNumber());
     }
 
-    public int getPrice() {
-        return price;
+    public HashMap<String, Integer> getBikeQuantities() {
+        return bikeQuantities;
     }
 
-    public BigDecimal getPriceDollars() {
-        BigDecimal priceDecimal = new BigDecimal(price);
+    public HashMap<String, String> getBikeNames() {
+        return bikeNames;
+    }
+
+    public HashMap<String, Integer> getBikePrices() {
+        return bikePrices;
+    }
+
+    public HashMap<String, BigDecimal> getBikePricesDollars() {
+        return bikePricesDollars;
+    }
+
+    public int getTotalPrice() {
+        return totalPrice;
+    }
+
+    public BigDecimal getTotalPriceDollars() {
+        BigDecimal priceDecimal = new BigDecimal(totalPrice);
         return priceDecimal.divide(new BigDecimal(100));
     }
 
@@ -143,20 +172,22 @@ public class Order implements Serializable {
             JSONObject bikeJson = new JSONObject();
             bikeJson.put("itemNumber", itemNum);
             bikeJson.put("bikeName", bikeNames.get(itemNum));
+            bikeJson.put("price", bikePrices.get(itemNum));
             bikeJson.put("quantity", bikeQuantities.get(itemNum));
             bikesArray.add(bikeJson);
         }
         jsonObject.put("bikes",bikesArray);
-		jsonObject.put("price", price);
+		jsonObject.put("totalPrice", totalPrice);
 
 		return jsonObject;
 	}
 
 	public String toString() {
-		Double priceDollars = (double) price / 100;
+		Double priceDollars = (double) totalPrice / 100;
 		return String
 				.format("%s%nStatus: %s%nCustomerID: %s%nItem Number: %s%n%s%nQuantity: %s%nPrice: $%.2f",
 						date, status,customerID, this.getItemNumber(), this.getBikeName(), this.getQuantity(), priceDollars);
 	}
+
 
 }

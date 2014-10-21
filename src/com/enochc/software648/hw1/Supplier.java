@@ -1,19 +1,29 @@
 package com.enochc.software648.hw1;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 
 public class Supplier extends UnicastRemoteObject implements SupplierInterface {
 	private static final long serialVersionUID = -3072627641347153761L;
 	private static final int PAGE_SIZE = 10;
+    private static final long RETRY_DELAY = 3000L;
 
-	private final SupplierData data;
+    private static final String SETTINGS_FILE = "settings.properties";
+
+    private final SupplierData data;
 	private final Map<String, Bike> inventory;
 	private ArrayList<Bike> bikes;
 	private ArrayList<Bike> bikesByPrice;
 	private int numPages;
+    private OrderingSystemInterface orderingSystem;
+    private final String orderingHost;
+    private final int orderingPort;
 
     private String currentDataVersion;
     private String oldDataVersion;
@@ -31,8 +41,74 @@ public class Supplier extends UnicastRemoteObject implements SupplierInterface {
 			e.printStackTrace();
 		}
 
+        String orderingHostTmp = "";
+        int orderingPortTmp = 0;
+
+        // load settings
+        try {
+            Properties prop = new Properties();
+            FileInputStream in = new FileInputStream(SETTINGS_FILE);
+            prop.load(in);
+            orderingHostTmp = prop.getProperty("orderingsystem.host");
+            orderingPortTmp = Integer.parseInt(prop.getProperty("orderingsystem.port"));
+
+            in.close();
+        } catch (IOException e) {
+            System.out.println("Unable to load settings.");
+            e.printStackTrace();
+        }
+
+        orderingHost=orderingHostTmp;
+        orderingPort=orderingPortTmp;
+
 	}
 
+    /**
+     * Complete an order after a random delay
+     */
+    private void completeOrderAfterDelay(final String orderID) {
+
+        Runnable runnable = new Runnable(){
+            @Override
+            public void run() {
+                boolean completed = false;
+                OrderingSystemInterface orderingSystem;
+
+                Random random = new Random();
+                long minute = 60000L;    // 1 minute
+                long randomDelay = (long) (minute+random.nextDouble()*minute);
+                try {
+                    Thread.sleep(randomDelay);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                while (!completed) {
+                    try {
+                        Registry registry1 = LocateRegistry.getRegistry(orderingHost, orderingPort);
+                        orderingSystem = (OrderingSystemInterface) registry1.lookup("OrderingSystem");
+
+                        orderingSystem.completeOrder(orderID);
+
+                        completed = true;
+
+                    } catch (NotBoundException | RemoteException e) {
+                        System.out.println("Unable to connect to OrderingSystem. Retry later.");
+                        e.printStackTrace();
+                        try {
+                            Thread.sleep(RETRY_DELAY);
+                        } catch (InterruptedException e1) {
+                            e1.printStackTrace();
+                        }
+                    }
+                }
+
+            }
+        };
+
+        (new Thread(runnable)).start();
+
+    }
 
     @Override
     public String getSupplierPrefix() {
@@ -44,7 +120,7 @@ public class Supplier extends UnicastRemoteObject implements SupplierInterface {
 		return data.getName();
 	}
 
-	private void loadInventory() throws IOException {
+	private synchronized void loadInventory() throws IOException {
         currentDataVersion = UUID.randomUUID().toString();
         Map<String, Integer> inventoryMap = data.getInventory();
         data.openReader();
@@ -166,27 +242,47 @@ public class Supplier extends UnicastRemoteObject implements SupplierInterface {
         versionDifference = new ArrayList<Bike>();
     }
 	@Override
-	public boolean purchase(String itemNumber, int n) throws RemoteException {
-		Bike bike = inventory.get(itemNumber);
-		int available = bike.getInventory();
-		if (available < n) {
-			// not enough available to complete order
-			return false;
-		}
+	public synchronized boolean purchase(PurchaseRequest request) throws RemoteException {
+        HashMap<String, Integer> bikeQuantities = request.getBikeQuantities();
 
+        // check first that there are enough inventory
+        for (Map.Entry<String,Integer> entry : bikeQuantities.entrySet()) {
+            String itemNumber = entry.getKey();
+            int quantity = entry.getValue();
+            Bike bike = inventory.get(itemNumber);
+
+            int available = bike.getInventory();
+            if (available < quantity) {
+                // not enough available to complete order
+                return false;
+            }
+        }
+
+        // request is valid, proceed
         // start a new data version
         this.generateNewDataVersion();
 
-		available = available -n;
-		bike.setInventory(available);
-        versionDifference.add(bike);
-		// update database as well
-		try {
-			data.writeInventory(bike, available);
-		} catch (IOException e) {
-			e.printStackTrace();
-			return false;
-		}
+        for (Map.Entry<String,Integer> entry : bikeQuantities.entrySet()) {
+            String itemNumber = entry.getKey();
+            int quantity = entry.getValue();
+            Bike bike = inventory.get(itemNumber);
+
+            int available = bike.getInventory();
+            available = available -quantity;
+            bike.setInventory(available);
+
+            versionDifference.add(bike);
+
+            // write to inventory
+            try {
+                data.writeInventory(bike, available);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+        completeOrderAfterDelay(request.getOrderID());
 		return true;
 	}
 

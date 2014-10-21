@@ -3,6 +3,7 @@ package com.enochc.software648.hw1;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -26,18 +27,19 @@ public interface OrderingSystemInterface extends Remote {
     public Bike lookupBike(String itemNum) throws RemoteException;
 
     /**
-     * Places an order on some bikes, returning the orderID.
-     * If the order fails preliminary tests, then return null.
+     * Places orders for bikes on the OrderingSystem.
      * Note that the order might fail later on the supplier side, which will be reflected
-     * on the order of the status, which can be found by querying the orderID
+     * on the order of the status, which can be found by querying the order history of the customer
      *
      * @param customerID
-     * @param itemNum
-     * @param quantity
-     * @return orderID of the order if the order is placed, null if it fails
+     * @param bikeQuantities
+     * @throws CustomerNotFoundException
+     * @throws BikeNotFoundException
+     * @throws InsufficientInventoryException
      * @throws RemoteException
      */
-    public String purchase(String customerID, String itemNum, int quantity) throws RemoteException;
+    public void purchase(String customerID, HashMap<String, Integer> bikeQuantities)
+            throws CustomerNotFoundException, BikeNotFoundException, InsufficientInventoryException, RemoteException;
 
     /**
      * @param customerID
@@ -60,7 +62,7 @@ public interface OrderingSystemInterface extends Remote {
      * @return Token that can be used to authenticate a customer.
      *         Null if incorrect password or customer not found
      */
-    String getToken(String customerID, String password) throws RemoteException;
+    public String getToken(String customerID, String password) throws RemoteException;
 
     /**
      *
@@ -77,6 +79,13 @@ public interface OrderingSystemInterface extends Remote {
      * @return Order as specified by orderID. Null if not found.
      */
     public Order lookupOrder(String orderID) throws RemoteException;
+
+    /**
+     *
+     * @param customerID
+     * @return List of messages for give customer.
+     */
+    public ArrayList<String> getMessages(String customerID) throws RemoteException;
 
     public void completeOrder(String orderID) throws RemoteException;
 

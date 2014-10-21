@@ -57,11 +57,6 @@ div#header {
     text-align:left;
 }
 
-div#login {
-    float: right;
-    text-align:right;
-}
-
 div#content{
     background-color:white;
     width: 80%;

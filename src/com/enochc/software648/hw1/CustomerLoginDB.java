@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Customer database that stores login information
@@ -20,7 +21,7 @@ public class CustomerLoginDB {
     private static final String TMP_FILENAME = "data/CustomerLogin.tmp";
     private SecureRandom random = new SecureRandom();
 
-    private final Map<String,String> tokenMap = new HashMap<String, String>();
+    private final ConcurrentHashMap<String,String> tokenMap = new ConcurrentHashMap<String, String>();
     private final JSONObject database;
 
 
@@ -121,7 +122,7 @@ public class CustomerLoginDB {
     /**
      * Write JSONObject into file
      */
-    private void flushJSON() {
+    private synchronized void flushJSON() {
         PrintWriter writer = null;
         try {
             File tmpFile = new File(TMP_FILENAME);

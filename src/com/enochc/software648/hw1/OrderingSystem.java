@@ -8,6 +8,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,6 +19,8 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
     private final Map<String, SupplierInterface> suppliersMap;
     private final HashMap<String, BikeCache> suppliersCache;
     private final Map<String, String> suppliersPrefixMap;
+    private final ConcurrentHashMap<String, ArrayList<String>> inboxes = new ConcurrentHashMap<String,ArrayList<String>>();
+
     private final CustomerDB customerDB;
     private final CustomerLoginDB customerLoginDB;
     private final OrderDB orderDB;
@@ -55,7 +58,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
             } else if (args[0].equals("lookupBike")) {
                 parseLookupBike(stripHead(args));
             } else if (args[0].equals("purchase")) {
-                purchase(stripHead(args));
+                parsePurchase(stripHead(args));
             } else if (args[0].equals("newCustomer")) {
                 parseNewCustomer(stripHead(args));
             } else if (args[0].equals("lookupCustomer")) {
@@ -116,7 +119,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
             String name1 = supplier1.getName();
             suppliersMap.put(name1, supplier1);
             suppliersPrefixMap.put(supplier1.getSupplierPrefix(), name1);
-            BikeCache bikeCache = new BikeCache(supplier1, host1,port1,"Supplier1");
+            BikeCache bikeCache = new BikeCache(supplier1, host1, port1, "Supplier1");
             suppliersCache.put(name1, bikeCache);
 
             // create new thread to run the bikeCache periodic update
@@ -136,7 +139,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
             String name2 = supplier2.getName();
             suppliersMap.put(name2, supplier2);
             suppliersPrefixMap.put(supplier2.getSupplierPrefix(), name2);
-            BikeCache bikeCache = new BikeCache(supplier2, host2,port2,"Supplier2");
+            BikeCache bikeCache = new BikeCache(supplier2, host2, port2, "Supplier2");
             suppliersCache.put(name2, bikeCache);
 
             // create new thread to run the bikeCache periodic update
@@ -145,7 +148,6 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
             System.out.println("Unable to connect to Supplier2");
             e.printStackTrace();
         }
-
 
 
     }
@@ -203,6 +205,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
 
     /**
      * Returns the inventory of given supplier, either from the supplier or from the cache
+     *
      * @param supplierName
      * @return
      */
@@ -212,6 +215,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
         BikeCache cache = suppliersCache.get(supplierName);
         return cache.browseBikes();
     }
+
     private void browseAll(String supplierName) {
         SupplierInterface supplier = suppliersMap.get(supplierName);
         if (supplier == null) {
@@ -282,14 +286,14 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
         }
 
 
-            Bike bike = lookupBike(args[0]);
+        Bike bike = lookupBike(args[0]);
 
-            if (bike == null) {
-                System.out.println(args[0] + " not found.");
-                return;
-            }
+        if (bike == null) {
+            System.out.println(args[0] + " not found.");
+            return;
+        }
 
-            System.out.print(bike.toString());
+        System.out.print(bike.toString());
 
     }
 
@@ -311,30 +315,61 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
     }
 
     @Override
-    public String purchase(String customerID, String itemNum, int quantity) {
+    public void purchase(String customerID, HashMap<String, Integer> bikeQuantities)
+            throws CustomerNotFoundException, BikeNotFoundException, InsufficientInventoryException {
         CustomerInfo customer = this.lookupCustomer(customerID);
-        Bike bike = this.lookupBike(itemNum);
-        String supplierName = this.extractSupplierName(itemNum);
-        BikeCache cache = suppliersCache.get(supplierName);
-
-        if (customer==null||bike==null) {
-            return null;
+        if (customer == null) {
+            throw new CustomerNotFoundException(customerID);
         }
 
-        if (quantity > bike.getInventory()) {
-            return null;
+        HashMap<String, Order> orders = new HashMap<String, Order>();
+        HashMap<String, PurchaseRequest> purchaseRequests = new HashMap<String, PurchaseRequest>();
+
+        for (Map.Entry<String, Integer> entry : bikeQuantities.entrySet()) {
+            String itemNum = entry.getKey();
+            int quantity = entry.getValue();
+            Bike bike = this.lookupBike(itemNum);
+            String supplierName = this.extractSupplierName(itemNum);
+
+            if (bike == null || supplierName == null) {
+                throw new BikeNotFoundException(itemNum);
+            }
+
+            if (quantity > bike.getInventory()) {
+                throw new InsufficientInventoryException(itemNum);
+            }
+
+            PurchaseRequest request = purchaseRequests.get(supplierName);
+            Order order = orders.get(supplierName);
+            if (request == null) {
+                String orderID = orderDB.getNewOrderID();
+                String date = orderDB.getDate();
+                order = new Order(customerID, date, orderID);
+                request = new PurchaseRequest(customerID, orderID, supplierName, this);
+                purchaseRequests.put(supplierName, request);
+                orders.put(supplierName, order);
+            }
+
+            request.addBike(itemNum, quantity);
+            order.addBike(bike, quantity);
         }
 
-        int price = bike.getPrice()*quantity;
-        String orderID = orderDB.newOrder(customerID,itemNum,bike.getName(),quantity,price);
-        customerDB.addOrder(customerID,orderID);
-        PurchaseRequest request = new PurchaseRequest(itemNum,quantity,orderID,this);
-        cache.purchase(request);
+        // all bikes added to requests and orders, partitioned by suppliers
+        // add order to orderDB, and queue up requests onto bikeCache, for each supplier
+        for (String supplierName : purchaseRequests.keySet()) {
+            BikeCache bikeCache = suppliersCache.get(supplierName);
+            PurchaseRequest purchaseRequest = purchaseRequests.get(supplierName);
+            Order order = orders.get(supplierName);
+            String orderID = order.getOrderID();
+            customerDB.addOrder(customerID, orderID);
+            orderDB.putOrder(order);
 
-        return orderID;
+            bikeCache.purchase(purchaseRequest);
+
+        }
     }
 
-    private void purchase(String[] args) {
+    private void parsePurchase(String[] args) {
         if (args.length != 4) {
             System.out
                     .println("Invalid number of parameters. Format: purchase supplier_name item_number quantity customerID");
@@ -385,7 +420,11 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
             int price = pricePerBike * quantity;
 
             // make purchase
+            /*
             boolean success = supplier.purchase(itemNumber, quantity);
+            */
+            // TODO fix this for the console version
+            boolean success = false;
             if (success) {
                 // add to OrdersDB
                 String orderID = orderDB.newOrder(customerID, itemNumber,
@@ -467,7 +506,7 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
 
     @Override
     public boolean checkToken(String customerID, String token) {
-        return customerLoginDB.checkToken(customerID,token);
+        return customerLoginDB.checkToken(customerID, token);
     }
 
     @Override
@@ -526,10 +565,45 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
         return orderDB.lookupOrder(orderID);
     }
 
+    private void sendMessage(String customerID, String message) {
+        ArrayList<String> inbox = inboxes.get(customerID);
+        if (inbox== null) {
+            inbox = new ArrayList<String>();
+            inboxes.put(customerID,inbox);
+        }
+
+        inbox.add(message);
+    }
+
+    @Override
+    public ArrayList<String> getMessages(String customerID) {
+        ArrayList<String> inbox = inboxes.get(customerID);
+        if (inbox == null) {
+            inbox = new ArrayList<String>();
+        }
+        return inbox;
+    }
 
     @Override
     public void completeOrder(String orderID) throws RemoteException {
-        orderDB.completeOrder(orderID);
+        Order order = orderDB.lookupOrder(orderID);
+        if (order != null) {
+            orderDB.completeOrder(orderID);
+
+            String customerID = order.getCustomerID();
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("Your order for ");
+            HashMap<String, String> bikeNames = order.getBikeNames();
+            for (String bikeName : bikeNames.values()) {
+                sb.append(bikeName+", ");
+            }
+            sb.append(" has completed!");
+            String message = sb.toString();
+            this.sendMessage(customerID, message);
+
+            System.out.println("Order " + orderID + " completed!");
+        }
     }
 
     @Override

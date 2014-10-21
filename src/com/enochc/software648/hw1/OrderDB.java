@@ -49,19 +49,27 @@ public class OrderDB {
 	}
 
 	/**
-	 * Warning: This method does not update the json file. Should call
-	 * flushJSON() after this.
-	 * 
-	 * @return An unused orderID.
+	 * @return A new orderID.
 	 */
-	private String getNewOrderID() {
+	public String getNewOrderID() {
 		Integer orderIDint = ((Number) database.get("currentOrderID"))
 				.intValue();
 		String orderIDString = orderIDint.toString();
 		database.put("currentOrderID", orderIDint + 1);
-
+        flushJSON();
 		return orderIDString;
 	}
+
+    public String getDate() {
+        return dateFormat.format(new Date());
+    }
+
+    public void putOrder(Order order) {
+        String orderID = order.getOrderID();
+        database.put(orderID,order.toJsonObject());
+        flushJSON();
+    }
+
 
 	/**
 	 * 
@@ -125,7 +133,7 @@ public class OrderDB {
 	/**
 	 * Write JSONObject into file
 	 */
-	private void flushJSON() {
+	private synchronized void flushJSON() {
 		PrintWriter writer = null;
 		try {
 			File tmpFile = new File(TMP_FILENAME);

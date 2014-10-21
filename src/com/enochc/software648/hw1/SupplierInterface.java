@@ -43,12 +43,11 @@ public interface SupplierInterface extends Remote {
 
 	/**
 	 * 
-	 * @param itemNumber of the bike
-	 * @param n is the quantity desired
+	 * @param request
 	 * @return true if successful, false if unsuccessful
 	 * @throws RemoteException
 	 */
-	public boolean purchase(String itemNumber, int n) throws RemoteException;
+	public boolean purchase(PurchaseRequest request) throws RemoteException;
 
 
     /**

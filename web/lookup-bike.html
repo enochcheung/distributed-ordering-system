@@ -27,10 +27,12 @@
     </div>
 
     <form id="cart-form" action="">
-        Bike Item Number: <input type='text' name='itemNum'/> <br>
-        Quantity: <input type='text' name='quantity'/> <br>
+        Bike Item Number: <input type='text' name='itemNum'/>
+        Quantity: <input type='text' name='quantity'/>
         <button type="submit">Add to cart</button>
     </form>
+    <button type="button" id="buy-button">Buy cart</button>
+    <p id="purchase-message"></p>
 
     <br>
 
@@ -38,19 +40,6 @@
     <span>Item Number: </span><input id="input" type="text">
     <button type="button" onclick="lookupBike()">Lookup Bike</button>
     <p id="message"></p>
-
-    <br>
-    <br>
-
-    <h3>Bike Purchase</h3>
-
-    <form id="purchase-form" action="">
-        Bike Item Number: <input type='text' name='itemNum'/> <br>
-        Quantity: <input type='text' name='quantity'/> <br>
-        <button type="submit">Buy</button>
-    </form>
-    <p id="purchase-message"></p>
-
 
     <br>
 
@@ -73,37 +62,10 @@
     var purchaseMessage = $("#purchase-message");
 
     $(document).ready(
-            function () {
-                $("#purchase-form").on("submit", function (e) {
-                    e.preventDefault();
-                    purchaseMessage.text("");
-                    var customerID = window.sessionStorage.getItem("customerID");
-                    var token = window.sessionStorage.getItem("token");
-
-                    if (customerID === null || token === null) {
-                        purchaseMessage.text("Login required.");
-                        return;
-                    }
-
-                    $.ajax({
-                        type: "POST",
-                        headers: {"customerID": customerID, "token": token},
-                        contentType: "application/x-www-form-urlencoded",
-                        data: $("#purchase-form").serialize(),
-                        dataType: "text",
-                        url: "rest/orderingsystem/buy/"
-                    }).done(function (data) {
-                                purchaseMessage.text(data);
-                            }
-                    ).fail(function (jqXHR, textStatus, errorThrown) {
-                                if (jqXHR.status == 403) {
-                                    purchaseMessage.text("Permission denied. (try logging in again)");
-                                } else {
-                                    purchaseMessage.text("Error requesting" + settings.url);
-                                }
-                            }
-                    );
-                });
+            function() {
+                $("#buy-button").on("click", function(e) {
+                    buy();
+                })
             }
     );
 
@@ -205,6 +167,42 @@
         window.sessionStorage.setItem("cart", jsonString);
 
         renderCart();
+    }
+
+    function buy() {
+        purchaseMessage.text("");
+        var customerID = window.sessionStorage.getItem("customerID");
+        var token = window.sessionStorage.getItem("token");
+
+        if (customerID === null || token === null) {
+            purchaseMessage.text("Login required.");
+            return;
+        }
+
+        var cartJsonString = window.sessionStorage.getItem("cart");
+        if (cartJsonString === null || cartJsonString == "{}") {
+            purchaseMessage.text("Cart must not be empty.");
+            return;
+        }
+
+        $.ajax({
+            type: "POST",
+            headers: {"customerID": customerID, "token": token},
+            contentType: "application/x-www-form-urlencoded",
+            data: {"jsonString": cartJsonString},
+            dataType: "text",
+            url: "rest/orderingsystem/buy/"
+        }).done(function (data) {
+                    purchaseMessage.text(data);
+                }
+        ).fail(function (jqXHR, textStatus, errorThrown) {
+                    if (jqXHR.status == 403) {
+                        purchaseMessage.text("Permission denied. (try logging in again)");
+                    } else {
+                        purchaseMessage.text("Error requesting" + settings.url);
+                    }
+                }
+        );
     }
 
 </script>

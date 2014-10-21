@@ -2,6 +2,8 @@ package com.enochc.software648.hw1;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+import org.json.simple.parser.JSONParser;
 
 import javax.annotation.PostConstruct;
 import javax.ws.rs.*;
@@ -12,6 +14,7 @@ import javax.ws.rs.core.SecurityContext;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -82,18 +85,38 @@ public class OrderingSystemController {
         return jsonObject;
     }
 
-    private JSONObject orderToJson(Order order) {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("customer", order.getCustomerID());
-        jsonObject.put("itemNumber", order.getItemNumber());
-        jsonObject.put("order", order.getOrderID());
+    private List<JSONObject> orderToJsonList(Order order) {
+        String customerID = order.getCustomerID();
+        String orderID = order.getOrderID();
+        String status = order.getStatus();
+        String date = order.getDate();
+        Number totalPrice = order.getTotalPriceDollars();
 
-        jsonObject.put("date", order.getDate());
-        jsonObject.put("status", order.getStatus());
-        jsonObject.put("bikeName", order.getBikeName());
-        jsonObject.put("quantity", order.getQuantity());
-        jsonObject.put("price", order.getPriceDollars());
-        return jsonObject;
+        List<JSONObject> list = new ArrayList<JSONObject>();
+        HashMap<String, Integer> bikeQuantities = order.getBikeQuantities();
+        HashMap<String, String> bikeNames = order.getBikeNames();
+        HashMap<String, BigDecimal> bikePrices = order.getBikePricesDollars();
+        for (String itemNum : bikeQuantities.keySet()) {
+            String bikeName = bikeNames.get(itemNum);
+            int quantity = bikeQuantities.get(itemNum);
+            Number bikePrice = bikePrices.get(itemNum);
+
+            JSONObject jsonObject = new JSONObject();
+
+            jsonObject.put("customer", customerID);
+            jsonObject.put("itemNumber", itemNum);
+            jsonObject.put("bikeName", bikeName);
+            jsonObject.put("price", bikePrice);
+            jsonObject.put("quantity", quantity);
+            jsonObject.put("orderId", orderID);
+            jsonObject.put("date", date);
+            jsonObject.put("status", status);
+            jsonObject.put("totalPrice", totalPrice);
+
+            list.add(jsonObject);
+        }
+
+        return list;
     }
 
     /*
@@ -190,36 +213,41 @@ public class OrderingSystemController {
     @Produces("text/plain")
     public String purchaseBike(@HeaderParam("customerID") String customerID,
                                @HeaderParam("token") String token,
-                               @FormParam("itemNum") String itemNum,
-                               @FormParam("quantity") String quantity) {
+                               @FormParam("jsonString") String jsonString) {
         connect();
         try {
             if (customerID == null | token == null | !orderingSystem.checkToken(customerID, token)) {
                 throw new WebApplicationException(403);
             }
 
-            if (itemNum == null
-                    || quantity == null) {
-                return "Fields missing.";
+            if (jsonString == null) {
+                throw new WebApplicationException(404);
             }
 
-            int quantInt = 0;
+            JSONObject jsonObj = (JSONObject) JSONValue.parse(jsonString);
+
+            HashMap<String, Integer> itemQuantities = new HashMap<String, Integer>();
+            for (Object object : jsonObj.keySet()) {
+                String itemNum = (String) object;
+
+                int quantity = 0;
+                quantity = ((Number) jsonObj.get(itemNum)).intValue();
+
+                itemQuantities.put(itemNum, quantity);
+
+            }
+
             try {
-                quantInt = Integer.parseInt(quantity);
-            } catch (NumberFormatException e) {
-                return "Quantity must be an integer";
-            }
-            if (quantInt <= 0) {
-                return "Quantity must be > 0";
-            }
-
-            String orderID = orderingSystem.purchase(customerID, itemNum, quantInt);
-
-            if (orderID == null) {
-                return "Order failed (customer not found, item not found, or insufficient stock)";
+                orderingSystem.purchase(customerID, itemQuantities);
+            } catch (CustomerNotFoundException e) {
+                return "Failed: Customer " + e.getCustomer() + " not found";
+            } catch (BikeNotFoundException e) {
+                return "Failed: Bike " + e.getItemNum() + " not found";
+            } catch (InsufficientInventoryException e) {
+                return "Failed: Insufficient stock for " + e.getItemNum();
             }
 
-            return "Order successfully placed. OrderID: " + orderID;
+            return "Order successfully placed.";
 
 
         } catch (RemoteException e) {
@@ -358,10 +386,42 @@ public class OrderingSystemController {
             JSONArray jsonArray = new JSONArray();
 
             for (Order order : orders) {
-                jsonArray.add(orderToJson(order));
+                for (JSONObject jsonObj : orderToJsonList(order)) {
+                    jsonArray.add(jsonObj);
+                }
             }
 
             return jsonArray.toJSONString();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            throw new WebApplicationException(404);
+        }
+    }
+
+
+    @GET
+    @Path("/inbox/{customerID}")
+    @Produces("text/html")
+    public String getInbox(@HeaderParam("customerID") String customerID,
+                               @HeaderParam("token") String token,
+                               @PathParam("customerID") String customerID2) {
+        connect();
+        try {
+            if (customerID == null | token == null | !orderingSystem.checkToken(customerID, token)) {
+                throw new WebApplicationException(403);
+            }
+
+            ArrayList<String> messages = orderingSystem.getMessages(customerID);
+            if (messages == null) {
+                throw new WebApplicationException(404);
+            }
+
+            StringBuilder sb = new StringBuilder();
+            for (String message : messages) {
+                sb.append(message+"\n");
+            }
+
+            return sb.toString();
         } catch (RemoteException e) {
             e.printStackTrace();
             throw new WebApplicationException(404);

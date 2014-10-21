@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browse</title>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <link rel="stylesheet" type="text/css" href="jquery.dynatable.css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="jquery.dynatable.js"></script>
+</head>
+
+
+<body>
+<div id="frame">
+    <div id="table">
+        <table id="bikes-table">
+            <thead>
+            <th>Item Number</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Inv</th>
+            <th>Price</th>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    $(document).ajaxError(function (event, jqxhr, settings, thrownError) {
+        document.getElementById("message").innerText = "Error requesting " + settings.url;
+    });
+    $(document).ready(browse());
+
+
+    function browse() {
+
+        $.ajax({
+            type: "GET",
+            datatype: "json",
+            url: "rest/orderingsystem/bike",
+            success: function (data) {
+                $("#bikes-table").dynatable({
+                    dataset: {
+                        records: data
+                    }
+                });
+            }
+        });
+    }
+
+</script>
+</body>
+</html>

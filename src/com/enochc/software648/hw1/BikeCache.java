@@ -130,7 +130,7 @@ public class BikeCache {
 
                 boolean success = false;
                 try {
-                    success = supplier.purchase(request.getItemNumber(), request.getQuantity());
+                    success = supplier.purchase(request);
 
                 } catch (RemoteException e) {
                     System.out.println("Unable to communicate with supplier to push request");
