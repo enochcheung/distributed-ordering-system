@@ -32,14 +32,19 @@ public class OrderingSystemController {
      */
     private void init() {
         // load settings
-        String host = "";
-        int port = 0;
+        String host1 = "";
+        String host2 = "";
+        int port1 = 0;
+        int port2 = 0;
+
         try {
             Properties prop = new Properties();
             InputStream in = this.getClass().getClassLoader().getResourceAsStream(SETTINGS_FILE);
             prop.load(in);
-            host = prop.getProperty("orderingsystem.host");
-            port = Integer.parseInt(prop.getProperty("orderingsystem.port"));
+            host1 = prop.getProperty("orderingsystem1.host");
+            port1 = Integer.parseInt(prop.getProperty("orderingsystem1.port"));
+            host2 = prop.getProperty("orderingsystem2.host");
+            port2 = Integer.parseInt(prop.getProperty("orderingsystem2.port"));
 
             in.close();
         } catch (IOException e) {
@@ -48,10 +53,15 @@ public class OrderingSystemController {
             return;
         }
 
+        String remoteName = "OrderingSystem2";
+        String host = host2;
+        int port = port2;
+
         // look up orderingsystem
         try {
             Registry registry = LocateRegistry.getRegistry(host, port);
-            orderingSystem = (OrderingSystemInterface) registry.lookup("OrderingSystem");
+            orderingSystem = (OrderingSystemInterface) registry.lookup(remoteName);
+
         } catch (NotBoundException | RemoteException e) {
             System.out.println("Unable to connect to OrderingSystem");
             e.printStackTrace();

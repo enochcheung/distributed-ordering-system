@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class OrderingSystem extends UnicastRemoteObject implements OrderingSystemInterface {
+public abstract class OrderingSystem extends UnicastRemoteObject implements OrderingSystemInterface {
     private static final String SETTINGS_FILE = "settings.properties";
     private static final Pattern itemNumberPattern = Pattern
             .compile("^([a-zA-Z0-9]{2})-([0-9]{2}-[0-9]{4}$)");
@@ -687,44 +687,6 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
 
     }
 
-    public static void main(String[] args) {
-        if (args.length > 0 && args[0].equals("console")) {
-            consoleMain(args);
-            return;
-        }
-
-        // look up host and port of target RMI registry
-        int port = 0;
-        String host = "";
-        try {
-            Properties prop = new Properties();
-            FileInputStream in = new FileInputStream(SETTINGS_FILE);
-            prop.load(in);
-            port = Integer.parseInt(prop.getProperty("orderingsystem.port"));
-            host = prop.getProperty("orderingsystem.host");
-
-            in.close();
-        } catch (IOException e) {
-            System.out.println("Unable to open " + SETTINGS_FILE);
-        }
-
-        // create the registry
-        Registry registry = null;
-
-        try {
-            registry = LocateRegistry.createRegistry(port);
-
-            // bind orderingsystem to registry
-
-            OrderingSystemInterface orderingSystem = new OrderingSystem();
-            registry.bind("OrderingSystem", orderingSystem);
-            System.out.println("OrderingSystem started.");
-        } catch (RemoteException | AlreadyBoundException e) {
-            e.printStackTrace();
-        }
-
-    }
-
     public static void consoleMain(String[] args) {
         // load settings
         String host1 = "", host2 = "";
@@ -762,11 +724,13 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
             e.printStackTrace();
         }
 
+        /*
         try {
             OrderingSystem orderingSystem = new OrderingSystem(suppliers);
         } catch (RemoteException e) {
             e.printStackTrace();
         }
+        */
 
     }
 }

@@ -21,4 +21,11 @@
         <url-pattern>/rest/*</url-pattern>
     </servlet-mapping>
 
+
+    <servlet>
+        <servlet-name>BikeShop</servlet-name>
+        <display-name>BikeShop</display-name>
+        <jsp-file>/index2.jsp</jsp-file>
+    </servlet>
+
 </web-app>
