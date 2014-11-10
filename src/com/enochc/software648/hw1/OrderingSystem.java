@@ -713,22 +713,15 @@ public class OrderingSystem extends UnicastRemoteObject implements OrderingSyste
 
         try {
             registry = LocateRegistry.createRegistry(port);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
 
-        // bind orderingsystem to registry
-        try {
+            // bind orderingsystem to registry
+
             OrderingSystemInterface orderingSystem = new OrderingSystem();
             registry.bind("OrderingSystem", orderingSystem);
             System.out.println("OrderingSystem started.");
-
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        } catch (AlreadyBoundException e) {
+        } catch (RemoteException | AlreadyBoundException e) {
             e.printStackTrace();
         }
-
 
     }
 
