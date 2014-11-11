@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.*;
 
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -17,6 +17,10 @@ public class OrderDB {
 	private static final String TMP_FILENAME = "data/OrdersDB.tmp";
 	private final SimpleDateFormat dateFormat = new SimpleDateFormat(
 			"MM/dd/yyyy HH:mm");
+    private static final int MAX_VERSIONS = 5;
+
+    private final LinkedHashMap<String, HashMap<String,Order>> databaseVersionDiffs;
+    private String currentVersionID;
 
 	private final JSONObject database;
 
@@ -46,9 +50,62 @@ public class OrderDB {
 			database.put("currentOrderID", 0);
 			flushJSON();
 		}
+
+        databaseVersionDiffs = new LinkedHashMap<String,HashMap<String,Order>>(){
+            private static final long serialVersionUID = 3077590306842883188L;
+
+            @Override
+            protected boolean removeEldestEntry(Map.Entry eldest) {
+                return size() > MAX_VERSIONS;
+            }
+        };
+
+        currentVersionID = UUID.randomUUID().toString();
+        databaseVersionDiffs.put(currentVersionID,new HashMap<String, Order>());
 	}
 
-	/**
+
+    synchronized private void updateVersionDiff(String orderID, Order order) {
+        for (HashMap<String,Order> map : databaseVersionDiffs.values()) {
+            map.put(orderID,order);
+        }
+
+        currentVersionID = UUID.randomUUID().toString();
+        databaseVersionDiffs.put(currentVersionID,new HashMap<String, Order>());
+
+    }
+
+
+    public DataPatch<HashMap<String, Order>> getDataPatch(String versionID) {
+        if (currentVersionID.equals(versionID)) {
+            return null;
+        }
+
+        if (databaseVersionDiffs.containsKey(versionID)) {
+            return new DataPatch<HashMap<String, Order>>(databaseVersionDiffs.get(versionID),currentVersionID);
+        }
+
+        return getAllInfo();
+    }
+
+    synchronized public DataPatch<HashMap<String,Order>> getAllInfo() {
+        HashMap<String,Order> map = new HashMap<String, Order>();
+        for (Object key : database.keySet()) {
+            String orderID = (String) key;
+            if (!orderID.equals("currentOrderID")) {
+                // skip the above
+
+                JSONObject orderJson = (JSONObject) database.get(orderID);
+                Order order = new Order(orderJson);
+
+                map.put(orderID, order);
+            }
+
+        }
+        return new DataPatch<HashMap<String, Order>>(map,currentVersionID);
+    }
+
+    /**
 	 * @return A new orderID.
 	 */
 	public String getNewOrderID() {
@@ -64,34 +121,12 @@ public class OrderDB {
         return dateFormat.format(new Date());
     }
 
-    public void putOrder(Order order) {
+    public boolean putOrder(Order order) {
         String orderID = order.getOrderID();
         database.put(orderID,order.toJsonObject());
         flushJSON();
+        return true;
     }
-
-
-	/**
-	 * 
-	 * @param customerID
-	 * @param itemNumber
-	 * @param bikeName
-	 * @param quantity
-	 * @param price
-	 * @return orderID for this order
-	 */
-	public String newOrder(String customerID, String itemNumber,
-			String bikeName, int quantity, int price) {
-		String orderID = getNewOrderID();
-		String date = (dateFormat.format(new Date()));
-		Order order = new Order(customerID, date, itemNumber, bikeName,
-				quantity, price);
-        order.setOrderID(orderID);
-
-		database.put(orderID, order.toJsonObject());
-		flushJSON();
-		return orderID;
-	}
 
 	public boolean validOrderID(String orderID) {
 		return database.containsKey(orderID);

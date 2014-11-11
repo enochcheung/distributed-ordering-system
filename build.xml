@@ -12,7 +12,10 @@
     <!-- fully-qualified names for classes -->
     <property name="supplier1.class" value="com.enochc.software648.hw1.Supplier1Server"/>
     <property name="supplier2.class" value="com.enochc.software648.hw1.Supplier2Server"/>
-    <property name="orderingsystem.class" value="com.enochc.software648.hw1.OrderingSystem"/>
+    <property name="orderingsystem1.class" value="com.enochc.software648.hw1.OrderingSystem1"/>
+    <property name="orderingsystem2.class" value="com.enochc.software648.hw1.OrderingSystem2"/>
+    <property name="database.class" value="com.enochc.software648.hw1.Database"/>
+
 
 
     <path id="classpath.base">
@@ -24,10 +27,13 @@
         -->
     </path>
 
-    <manifestclasspath property="orderingsystem.manifest" jarfile="OrderingSystem.jar">
+    <manifestclasspath property="orderingsystem1.manifest" jarfile="OrderingSystem1.jar">
         <classpath refid="classpath.base"/>
     </manifestclasspath>
 
+    <manifestclasspath property="orderingsystem2.manifest" jarfile="OrderingSystem2.jar">
+        <classpath refid="classpath.base"/>
+    </manifestclasspath>
 
     <manifestclasspath property="supplier1.manifest" jarfile="Supplier1Server.jar">
         <classpath refid="classpath.base"/>
@@ -37,6 +43,11 @@
     <manifestclasspath property="supplier2.manifest" jarfile="Supplier2Server.jar">
         <classpath refid="classpath.base"/>
     </manifestclasspath>
+
+    <manifestclasspath property="database.manifest" jarfile="Database.jar">
+        <classpath refid="classpath.base"/>
+    </manifestclasspath>
+
 
     <target name="init">
         <!-- Create the time stamp -->
@@ -74,10 +85,28 @@
 
         </jar>
 
-        <jar destfile="OrderingSystem.jar" filesetmanifest="mergewithoutmain">
+        <jar destfile="OrderingSystem1.jar" filesetmanifest="mergewithoutmain">
             <manifest>
-                <attribute name="Main-Class" value="${orderingsystem.class}"/>
-                <attribute name="Class-Path" value="${orderingsystem.manifest}"/>
+                <attribute name="Main-Class" value="${orderingsystem1.class}"/>
+                <attribute name="Class-Path" value="${orderingsystem1.manifest}"/>
+            </manifest>
+            <fileset dir="${main.build.dir}"/>
+
+        </jar>
+
+        <jar destfile="OrderingSystem2.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="${orderingsystem2.class}"/>
+                <attribute name="Class-Path" value="${orderingsystem2.manifest}"/>
+            </manifest>
+            <fileset dir="${main.build.dir}"/>
+
+        </jar>
+
+        <jar destfile="Database.jar" filesetmanifest="mergewithoutmain">
+            <manifest>
+                <attribute name="Main-Class" value="${database.class}"/>
+                <attribute name="Class-Path" value="${database.manifest}"/>
             </manifest>
             <fileset dir="${main.build.dir}"/>
 

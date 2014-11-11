@@ -1,19 +1,25 @@
 package com.enochc.software648.hw1;
 
+import com.enochc.software648.hw1.request.PurchaseRequest;
+
 import java.io.*;
-import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class OrderingSystem extends UnicastRemoteObject implements OrderingSystemInterface {
+    private static final long serialVersionUID = -7463687943606009814L;
+
     private static final String SETTINGS_FILE = "settings.properties";
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat(
+            "MM/dd/yyyy HH:mm");
     private static final Pattern itemNumberPattern = Pattern
             .compile("^([a-zA-Z0-9]{2})-([0-9]{2}-[0-9]{4}$)");
     private final Map<String, SupplierInterface> suppliersMap;
@@ -21,68 +27,13 @@ public abstract class OrderingSystem extends UnicastRemoteObject implements Orde
     private final Map<String, String> suppliersPrefixMap;
     private final ConcurrentHashMap<String, ArrayList<String>> inboxes = new ConcurrentHashMap<String,ArrayList<String>>();
 
-    private final CustomerDB customerDB;
-    private final CustomerLoginDB customerLoginDB;
-    private final OrderDB orderDB;
-
-    /**
-     * Constructor that starts the OrderingSystem which is accesed through the console
-     *
-     * @param suppliers
-     */
-    public OrderingSystem(List<SupplierInterface> suppliers) throws RemoteException {
-        this();
-        System.out.println("Available suppliers: "
-                + getAvailableSuppliers().toString());
-
-        BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
-        while (true) {
-            System.out.println("type \"help\" for help");
-
-            String line = "";
-            try {
-                line = inputReader.readLine();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            String[] args = line.split(" ");
-            if (args.length == 0) {
-                System.out.println("Invalid input.");
-            } else if (args[0].equals("help")) {
-                System.out.println("see readme.txt");
-            } else if (args[0].equals("browse")) {
-                parseBrowse(stripHead(args));
-            } else if (args[0].equals("browseByPrice")) {
-                browseByPrice(stripHead(args));
-            } else if (args[0].equals("lookupBike")) {
-                parseLookupBike(stripHead(args));
-            } else if (args[0].equals("purchase")) {
-                parsePurchase(stripHead(args));
-            } else if (args[0].equals("newCustomer")) {
-                parseNewCustomer(stripHead(args));
-            } else if (args[0].equals("lookupCustomer")) {
-                parseLookupCustomer(stripHead(args));
-            } else if (args[0].equals("lookupOrder")) {
-                parseLookupOrder(stripHead(args));
-            } else if (args[0].equals("completeOrder")) {
-                parseCompleteOrder(stripHead(args));
-            } else if (args[0].equals("orderHistory")) {
-                parseOrderHistory(stripHead(args));
-            } else if (args[0].equals("listCustomers")) {
-                parseListCustomers(stripHead(args));
-            } else if (args[0].equals("quit") && args.length == 1) {
-                break;
-            } else {
-                System.out.println("Invalid input.");
-            }
-        }
-    }
+    private final DatabaseConnector database;
 
     /**
      * Constructs a new OrderingSystem to be accessed through a servlet
      */
     public OrderingSystem() throws RemoteException {
+        super();    //TODO is this needed?
         // load settings
         String host1 = "", host2 = "";
         int port1 = 0, port2 = 0;
@@ -105,9 +56,7 @@ public abstract class OrderingSystem extends UnicastRemoteObject implements Orde
         suppliersMap = new HashMap<String, SupplierInterface>();
         suppliersPrefixMap = new HashMap<String, String>();
         suppliersCache = new HashMap<String, BikeCache>();
-        customerDB = new CustomerDB();
-        customerLoginDB = new CustomerLoginDB();
-        orderDB = new OrderDB();
+        database = new DatabaseConnector();
 
         // look up suppliers
         List<SupplierInterface> suppliers = new ArrayList<SupplierInterface>();
@@ -342,8 +291,8 @@ public abstract class OrderingSystem extends UnicastRemoteObject implements Orde
             PurchaseRequest request = purchaseRequests.get(supplierName);
             Order order = orders.get(supplierName);
             if (request == null) {
-                String orderID = orderDB.getNewOrderID();
-                String date = orderDB.getDate();
+                String orderID = database.getNewOrderID();
+                String date = this.getDate();
                 order = new Order(customerID, date, orderID);
                 request = new PurchaseRequest(customerID, orderID, supplierName, this);
                 purchaseRequests.put(supplierName, request);
@@ -361,157 +310,46 @@ public abstract class OrderingSystem extends UnicastRemoteObject implements Orde
             PurchaseRequest purchaseRequest = purchaseRequests.get(supplierName);
             Order order = orders.get(supplierName);
             String orderID = order.getOrderID();
-            customerDB.addOrder(customerID, orderID);
-            orderDB.putOrder(order);
+            database.addOrderToCustomer(customerID, orderID);
+            database.putOrder(order);
 
             bikeCache.purchase(purchaseRequest);
 
         }
     }
 
-    private void parsePurchase(String[] args) {
-        if (args.length != 4) {
-            System.out
-                    .println("Invalid number of parameters. Format: purchase supplier_name item_number quantity customerID");
-            return;
-        }
-        SupplierInterface supplier = suppliersMap.get(args[0]);
-        if (supplier == null) {
-            System.out.println(args[0] + " is not a valid supplier.");
-            return;
-        }
-
-        try {
-            // Find item
-            String itemNumber = args[1];
-            if (!supplier.validItemNumber(itemNumber)) {
-                System.out.println(args[1] + " not found.");
-                return;
-            }
-
-            String bikeName = supplier.lookupName(itemNumber);
-            int pricePerBike = supplier.lookupPrice(itemNumber);
-            int inventory = supplier.lookupInventory(itemNumber);
-
-            // Determine quantity
-            int quantity = 0;
-            try {
-                quantity = Integer.parseInt(args[2]);
-            } catch (NumberFormatException e) {
-                System.out.println(args[1] + " is not a valid quantity.");
-                return;
-            }
-
-            if (quantity > inventory) {
-                System.out.println("Item not in stock. Quantity requested: "
-                        + quantity + " Inventory: " + inventory);
-                return;
-            }
-
-            String customerID = args[3];
-            if (!customerDB.hasCustomer(customerID)) {
-                System.out
-                        .println("Customer "
-                                + customerID
-                                + " not found. (Use newCustomer to add customer first)");
-                return;
-            }
-
-            int price = pricePerBike * quantity;
-
-            // make purchase
-            /*
-            boolean success = supplier.purchase(itemNumber, quantity);
-            */
-            // TODO fix this for the console version
-            boolean success = false;
-            if (success) {
-                // add to OrdersDB
-                String orderID = orderDB.newOrder(customerID, itemNumber,
-                        bikeName, quantity, price);
-                System.out.println("Purchase successful! OrderID: " + orderID);
-
-                // add order to CustomerDB
-                customerDB.addOrder(customerID, orderID);
-            } else {
-                System.out.println("Purchase unsuccessful.");
-            }
-
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    private void parseNewCustomer(String[] args) {
-        if (args.length != 1) {
-            System.out
-                    .println("Invalid number of parameters. Format: newCustomer");
-            return;
-        }
-
-        String customerID = args[0];
-        if (customerDB.hasCustomer(customerID)) {
-            System.out.println(customerID + " already taken.");
-            return;
-        }
-        try {
-            BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
-
-            System.out.println("First name?");
-            String firstname = inputReader.readLine();
-            System.out.println("Last name?");
-            String lastname = inputReader.readLine();
-
-            System.out.println("Street address?");
-            String street = inputReader.readLine();
-
-            System.out.println("City?");
-            String city = inputReader.readLine();
-
-            System.out.println("State?");
-            String state = inputReader.readLine();
-
-            System.out.println("Zip code?");
-            String zipcode = inputReader.readLine();
-
-            newCustomer(customerID, "hunter2", firstname,
-                    lastname, street, city, state, zipcode);
-            System.out.println("Customer " + customerID + " added.");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+    private String getDate(){
+        return dateFormat.format(new Date());
     }
 
     @Override
     public boolean newCustomer(String customerID, String password, String firstname, String lastname, String street,
                                String city, String state, String zipcode) {
-        if (customerDB.hasCustomer(customerID) || customerLoginDB.hasCustomer(customerID)) {
+        if (database.hasCustomer(customerID) || database.hasCustomerLogin(customerID)) {
             System.out.println(customerID + " already taken.");
             return false;
         }
         CustomerInfo customerInfo = new CustomerInfo(customerID, firstname,
                 lastname, street, city, state, zipcode);
-        customerDB.addCustomer(customerID, customerInfo);
-        customerLoginDB.addCustomer(customerID, password);
+        database.addCustomer(customerID, customerInfo);
+        database.addCustomerLogin(customerID, password);
         System.out.println("Customer " + customerID + " added.");
         return true;
     }
 
     @Override
     public String getToken(String customerID, String password) {
-        return customerLoginDB.getToken(customerID, password);
+        return database.getToken(customerID, password);
     }
 
     @Override
     public boolean checkToken(String customerID, String token) {
-        return customerLoginDB.checkToken(customerID, token);
+        return database.checkToken(customerID, token);
     }
 
     @Override
     public CustomerInfo lookupCustomer(String customerID) {
-        return customerDB.lookup(customerID);
+        return database.lookupCustomer(customerID);
     }
 
     private void parseLookupCustomer(String[] args) {
@@ -522,7 +360,7 @@ public abstract class OrderingSystem extends UnicastRemoteObject implements Orde
         }
         String customerID = args[0];
 
-        CustomerInfo customerInfo = customerDB.lookup(customerID);
+        CustomerInfo customerInfo = database.lookupCustomer(customerID);
         if (customerInfo == null) {
             System.out.println("Customer " + customerID
                     + " not found. (Use newCustomer to add customer first)");
@@ -531,38 +369,9 @@ public abstract class OrderingSystem extends UnicastRemoteObject implements Orde
         System.out.println(customerInfo.toString() + "\n");
     }
 
-    private void parseLookupOrder(String[] args) {
-        if (args.length != 1) {
-            System.out
-                    .println("Invalid number of parameters. Format: lookupOrder orderID");
-            return;
-        }
-
-        String orderID = args[0];
-        Order order = orderDB.lookupOrder(orderID);
-        if (order == null) {
-            System.out.println(orderID + " not found.");
-            return;
-        }
-
-        String customerID = order.getCustomerID();
-        System.out.println(String.format("OrderID: %s%n%s", orderID,
-                order.toString()));
-
-        String shippingInfo = customerDB.lookupShipping(customerID);
-        if (shippingInfo == null) {
-            System.out.println("Shipping info not found.");
-            return;
-        }
-        System.out.println("Shipping Info:");
-        System.out.println(shippingInfo);
-        System.out.println();
-
-    }
-
     @Override
     public Order lookupOrder(String orderID) throws RemoteException {
-        return orderDB.lookupOrder(orderID);
+        return database.lookupOrder(orderID);
     }
 
     private void sendMessage(String customerID, String message) {
@@ -586,9 +395,9 @@ public abstract class OrderingSystem extends UnicastRemoteObject implements Orde
 
     @Override
     public void completeOrder(String orderID) throws RemoteException {
-        Order order = orderDB.lookupOrder(orderID);
+        Order order = database.lookupOrder(orderID);
         if (order != null) {
-            orderDB.completeOrder(orderID);
+            database.completeOrder(orderID);
 
             String customerID = order.getCustomerID();
 
@@ -608,52 +417,12 @@ public abstract class OrderingSystem extends UnicastRemoteObject implements Orde
 
     @Override
     public String lookupShipping(String customerID) {
-        return customerDB.lookupShipping(customerID);
-    }
-
-    private void parseCompleteOrder(String[] args) {
-        if (args.length != 1) {
-            System.out
-                    .println("Invalid number of parameters. Format: completeOrder orderID");
-            return;
-        }
-
-        String orderID = args[0];
-        if (!orderDB.validOrderID(orderID)) {
-            System.out.println(orderID + " not found.");
-            return;
-        }
-        orderDB.completeOrder(orderID);
-        System.out.println("Order completed!");
-        parseLookupOrder(args);
-
-    }
-
-    private void parseOrderHistory(String[] args) {
-        if (args.length != 1) {
-            System.out
-                    .println("Invalid number of parameters. Format: orderHistory customerID");
-            return;
-        }
-        String customerID = args[0];
-
-        CustomerInfo customerInfo = customerDB.lookup(customerID);
-        if (customerInfo == null) {
-            System.out.println("Customer " + customerID
-                    + " not found. (Use newCustomer to add customer first)");
-            return;
-        }
-        List<String> orderHistory = customerInfo.orderHistory();
-        for (String orderID : orderHistory) {
-            String[] orderIDArray = new String[1];
-            orderIDArray[0] = orderID;
-            parseLookupOrder(orderIDArray);
-        }
+        return database.lookupShipping(customerID);
     }
 
     @Override
     public ArrayList<Order> orderHistory(String customerID) throws RemoteException {
-        CustomerInfo customerInfo = customerDB.lookup(customerID);
+        CustomerInfo customerInfo = database.lookupCustomer(customerID);
         if (customerInfo == null) {
             System.out.println("Customer " + customerID
                     + " not found. (Use newCustomer to add customer first)");
@@ -674,63 +443,16 @@ public abstract class OrderingSystem extends UnicastRemoteObject implements Orde
                     .println("Invalid number of parameters. Format: orderHistory customerID");
             return;
         }
-        System.out.println(customerDB.listCustomers().toString());
+        System.out.println(database.listCustomers().toString());
     }
 
     @Override
     public ArrayList<String> listCustomers() throws RemoteException {
-        return new ArrayList<String>(customerDB.listCustomers());
+        return new ArrayList<String>(database.listCustomers());
     }
 
     public void notifyFailed(String orderID) {
-        orderDB.failedOrder(orderID);
-
-    }
-
-    public static void consoleMain(String[] args) {
-        // load settings
-        String host1 = "", host2 = "";
-        int port1 = 0, port2 = 0;
-        try {
-            Properties prop = new Properties();
-            FileInputStream in = new FileInputStream(SETTINGS_FILE);
-            prop.load(in);
-            host1 = prop.getProperty("supplier1.host");
-            port1 = Integer.parseInt(prop.getProperty("supplier1.port"));
-            host2 = prop.getProperty("supplier2.host");
-            port2 = Integer.parseInt(prop.getProperty("supplier2.port"));
-
-            in.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // look up suppliers
-
-        List<SupplierInterface> suppliers = new ArrayList<SupplierInterface>();
-        try {
-            Registry registry1 = LocateRegistry.getRegistry(host1, port1);
-            suppliers.add((SupplierInterface) registry1.lookup("Supplier1"));
-        } catch (NotBoundException | RemoteException e) {
-            System.out.println("Unable to connect to Supplier1");
-            e.printStackTrace();
-        }
-
-        try {
-            Registry registry2 = LocateRegistry.getRegistry(host2, port2);
-            suppliers.add((SupplierInterface) registry2.lookup("Supplier2"));
-        } catch (NotBoundException | RemoteException e) {
-            System.out.println("Unable to connect to Supplier2");
-            e.printStackTrace();
-        }
-
-        /*
-        try {
-            OrderingSystem orderingSystem = new OrderingSystem(suppliers);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        */
+        database.failedOrder(orderID);
 
     }
 }

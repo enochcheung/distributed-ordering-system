@@ -1,5 +1,7 @@
 package com.enochc.software648.hw1;
 
+import com.enochc.software648.hw1.request.PurchaseRequest;
+
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
@@ -57,7 +59,7 @@ public interface SupplierInterface extends Remote {
      * @return SupplierDataPatch for updating the orderingsystem's cache
      * @throws RemoteException
      */
-    public SupplierDataPatch getNewBikes(String dataVersion) throws RemoteException;
+    public DataPatch getNewBikes(String dataVersion) throws RemoteException;
 
     public String getDataVersion() throws RemoteException;
 }

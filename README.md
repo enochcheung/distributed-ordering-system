@@ -20,15 +20,19 @@
 	tomcat2 connector (HTTP) port = 8082
 	tomcat2 connector (AJP) port = 8011
 	```
-6. Have two copies of Tomcat in separate directories, and replace `conf/server.xml` with the ones provided in `mod-jk/tomcat1/server.xml` and `mod-jk/tomcat2/server.xml`, or manually change the ports to match the above.
+6. Have two copies of Tomcat in separate directories, and replace `conf/server.xml` with the ones provided in `mod-jk/tomcat1/server.xml` and `mod-jk/tomcat2/server.xml`, or manually change the ports to match the above, and add `jvmRoute="tomcat1"` to the line
+	```
+	<Engine name="Catalina" defaultHost="localhost" jvmRoute="tomcat1">
+	```
+	and similar for tomcat2.
 
 
 ## Starting the ordering system:
 
 1. Make sure the ports in `settings.properties` are not occupied, and make sure the hosts match the ones you are running supplier1 and supplier 2 and orderingsystem on.
-2. `ant jar` to build jar files.
-3. Run `Supplier1Server.jar`, then `Supplier2Server.jar`, then `OrderingSystem.jar` inside the directory where the jars are built. (Use `java -jar Supplier1Server.jar` etc)
-4. Deploy `out/artifacts/BikeShop/BikeShop.war` on both Tomcat1 and Tomcat2.
+2. `ant jar` to build jar files. (Optional - the jars should already have been built).
+3. Run `Database.jar`, then `Supplier1Server.jar`, then `Supplier2Server.jar`,  then `OrderingSystem1.jar`, then `OrderingSystem2.jar`, inside the directory where the jars are built. (Use `java -jar Supplier1Server.jar` etc)
+4. Deploy `WAR/tomcat1/BikeShop.war` on Tomcat1, and `WAR/tomcat2/BikeShop.war` Tomcat2.
 5. Start the Apache server, Tomcat1 and Tomcat2.
 6. Do not manually modify data files when anything is running.
 
@@ -46,46 +50,3 @@
 
 ## Commands:
 
-
-## Building mod_jk:
-
-1. Go to `apache-mod-jk/native`, and build mod_jk with
-
-	```
-	./configure --with-apxs=/usr/sbin/apxs
-	make
-	```
-2. Locate `apache-mod-jk/native/apache-2.0/mod_jk.so`
-
-```
-tomcat1 server port = 8006
-tomcat1 connector (HTTP) port = 8081 
-tomcat1 connector (AJP) port = 8010 
-
-tomcat2 server port = 8007
-tomcat2 connector (HTTP) port = 8082
-tomcat2 connector (AJP) port = 8011
-```
-
-Default Mac OS location for apache http server: `/etc/apache2`
-Start: `apachectl start`
-Restart: `apachectl restart`
-Check modules: `apachectl -t -D DUMP_MODULES`
-assume httpd.conf has `Listen 80`
-
-
-### OrderingSystem Console version (Deprecated, might not work):
-Start OrderingSystem with param `console`
-
-* `help` Tells you to read the readme.
-* `browse supplier_name page_num` Browses the inventory of chosen supplier. `page_num` could be `all`.
-* `browseByPrice supplier_name page_num` Browses the inventory of chosen supplier by increasing price. `page_num` could be `all`.
-* `lookupBike item_number` Looks up information for a bike.
-* `purchase supplier_name item_number quantity customerID` Buys a bike. An orderID will be assigned. `customerID` must first be created using `newCustomer customerID`.
-* `newCustomer customerID` Creates a customer with given `customerID`. Additional prompts will ask for shipping information.
-* `lookupCustomer customerID` Looks up the information on a customer, including a list of the orderID of their orders.
-* `orderHistory customerID` Lists the orders of given customer.
-* `listCustomers` Lists all customers by customerID.
-* `lookupOrder orderID` Look up an order.
-* `completeOrder orderID` Changes the status of an order to "complete".
-* `quit` to shut down the ordering system.

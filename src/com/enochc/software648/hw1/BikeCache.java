@@ -1,12 +1,12 @@
 package com.enochc.software648.hw1;
 
+import com.enochc.software648.hw1.request.PurchaseRequest;
+
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -41,7 +41,7 @@ public class BikeCache {
             System.out.println("could not load name from supplier");
             e.printStackTrace();
         }
-        connected = true;
+        connected = false;
         pullBikes();
 
     }
@@ -67,7 +67,7 @@ public class BikeCache {
             Registry registry = LocateRegistry.getRegistry(host, port);
             supplier = (SupplierInterface) registry.lookup(remoteName);
             connected = true;
-            System.out.println("Reconnected to "+supplierName);
+            System.out.println("Connected to "+supplierName);
         } catch (NotBoundException | RemoteException e) {
             e.printStackTrace();
         }
@@ -84,8 +84,8 @@ public class BikeCache {
 
             synchronized (this.writeLock) {
                 if (!this.dataVersion.equals(supplier.getDataVersion())) {
-                    SupplierDataPatch dataPatch = supplier.getNewBikes(dataVersion);
-                    for (Bike bike : dataPatch.getBikes()) {
+                    DataPatch<ArrayList<Bike>> dataPatch = supplier.getNewBikes(dataVersion);
+                    for (Bike bike : dataPatch.getData()) {
                         cache.put(bike.getItemNumber(), bike);
                     }
                     dataVersion = dataPatch.getDataVersion();

@@ -11,6 +11,8 @@ import java.util.Properties;
 
 public class RemoteConnect {
     private static final String SETTINGS_FILE = "settings.properties";
+    private String databasehost;
+    private int databaseport;
     private int system1port;
     private String system1host;
     private String system2host;
@@ -22,8 +24,7 @@ public class RemoteConnect {
     private static RemoteConnect instance = null;
 
 
-
-    public static RemoteConnect getInstance(){
+    public static RemoteConnect getInstance() {
         if (instance == null) {
             instance = new RemoteConnect();
         }
@@ -45,6 +46,8 @@ public class RemoteConnect {
             supplier2host = prop.getProperty("supplier2.host");
             supplier2port = Integer.parseInt(prop.getProperty("supplier2.port"));
 
+            databasehost = prop.getProperty("database.host");
+            databaseport = Integer.parseInt(prop.getProperty("database.port"));
 
             in.close();
         } catch (IOException e) {
@@ -53,53 +56,41 @@ public class RemoteConnect {
         }
 
 
-
         this.instance = this;
     }
 
 
-
-    public OrderingSystemInterface getOrderingSystem1() {
+    public OrderingSystemInterface getOrderingSystem1() throws RemoteException, NotBoundException {
         OrderingSystemInterface orderingSystem1 = null;
-        try {
-            Registry registry = LocateRegistry.getRegistry(system1host, system1port);
-            orderingSystem1 =  (OrderingSystemInterface) registry.lookup("OrderingSystem1");
-        } catch (NotBoundException | RemoteException e) {
-            System.out.println("Unable to connect to OrderingSystem1");
-            e.printStackTrace();
-        }
+
+        Registry registry = LocateRegistry.getRegistry(system1host, system1port);
+        orderingSystem1 = (OrderingSystemInterface) registry.lookup("OrderingSystem1");
+
         return orderingSystem1;
     }
 
-    public OrderingSystemInterface getOrderingSystem2() {
+    public OrderingSystemInterface getOrderingSystem2() throws RemoteException, NotBoundException {
         OrderingSystemInterface orderingSystem2 = null;
-        try {
-            Registry registry = LocateRegistry.getRegistry(system2host, system2port);
-            orderingSystem2 =  (OrderingSystemInterface) registry.lookup("OrderingSystem2");
-        } catch (NotBoundException | RemoteException e) {
-            System.out.println("Unable to connect to OrderingSystem2");
-            e.printStackTrace();
-        }
+
+        Registry registry = LocateRegistry.getRegistry(system2host, system2port);
+        orderingSystem2 = (OrderingSystemInterface) registry.lookup("OrderingSystem2");
+
         return orderingSystem2;
     }
 
-    public SupplierInterface getSupplier1() {
-        SupplierInterface supplier1=null;
-        try {
-            Registry registry = LocateRegistry.getRegistry(supplier1host, supplier1port);
-            supplier1 = (SupplierInterface) registry.lookup("Supplier1");
-        } catch (NotBoundException | RemoteException e) {
-            System.out.println("Unable to connect to Supplier1");
-            e.printStackTrace();
-        }
+    public SupplierInterface getSupplier1() throws RemoteException, NotBoundException {
+        SupplierInterface supplier1 = null;
+
+        Registry registry = LocateRegistry.getRegistry(supplier1host, supplier1port);
+        supplier1 = (SupplierInterface) registry.lookup("Supplier1");
+
         return supplier1;
     }
 
 
-
     public SupplierInterface getSupplier2() {
 
-        SupplierInterface supplier2=null;
+        SupplierInterface supplier2 = null;
 
         try {
             Registry registry = LocateRegistry.getRegistry(supplier2host, supplier2port);
@@ -111,8 +102,18 @@ public class RemoteConnect {
         return supplier2;
     }
 
+    public DatabaseInterface getDatabase() throws RemoteException, NotBoundException {
 
-    public ArrayList<OrderingSystemInterface> getOrderingSystems() {
+        DatabaseInterface database = null;
+
+
+        Registry registry = LocateRegistry.getRegistry(databasehost, databaseport);
+        database = (DatabaseInterface) registry.lookup("Database");
+
+        return database;
+    }
+
+    public ArrayList<OrderingSystemInterface> getOrderingSystems() throws RemoteException, NotBoundException {
         ArrayList<OrderingSystemInterface> list = new ArrayList<OrderingSystemInterface>();
         list.add(this.getOrderingSystem1());
         list.add(this.getOrderingSystem2());
@@ -133,5 +134,13 @@ public class RemoteConnect {
 
     public int getOrderingSystem2Port() {
         return system2port;
+    }
+
+    public String getDatabasehost() {
+        return databasehost;
+    }
+
+    public int getDatabasePort() {
+        return databaseport;
     }
 }

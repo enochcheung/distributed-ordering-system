@@ -24,13 +24,9 @@ public class OrderingSystem1 extends OrderingSystem {
 
 
     public static void main(String[] args) {
-
-        // create the registry
-        Registry registry = null;
-
         try {
             int port = getMyPort();
-            registry = LocateRegistry.createRegistry(port);
+            Registry registry = LocateRegistry.createRegistry(port);
 
             // bind orderingsystem to registry
 

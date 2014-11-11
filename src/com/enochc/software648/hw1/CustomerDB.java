@@ -6,8 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -15,10 +14,13 @@ import org.json.simple.JSONValue;
 public class CustomerDB {
 	private static final String FILENAME = "data/CustomerDB.txt";
 	private static final String TMP_FILENAME = "data/CustomerDB.tmp";
+    private static final int MAX_VERSIONS = 5;
 
-	private final JSONObject database;
+    private final JSONObject database;
+    private final LinkedHashMap<String, HashMap<String,CustomerInfo>> databaseVersionDiffs;
+    private String currentVersionID;
 
-	public CustomerDB() {
+    public CustomerDB() {
 		File file = new File(FILENAME);
 		if (file.exists()) {
 			// if the file already exists, load the data from it
@@ -42,16 +44,49 @@ public class CustomerDB {
 			database = new JSONObject();
 			flushJSON();
 		}
+
+        databaseVersionDiffs = new LinkedHashMap<String,HashMap<String,CustomerInfo>>(){
+            private static final long serialVersionUID = 76149408267525205L;
+
+            @Override
+            protected boolean removeEldestEntry(Map.Entry eldest) {
+                return size() > MAX_VERSIONS;
+            }
+        };
+
+        currentVersionID = UUID.randomUUID().toString();
+        databaseVersionDiffs.put(currentVersionID,new HashMap<String, CustomerInfo>());
 	}
 
 	public boolean hasCustomer(String customerID) {
 		return database.containsKey(customerID);
 	}
 
+    synchronized private void updateVersionDiff(String customerID, CustomerInfo customerInfo) {
+        for (HashMap<String,CustomerInfo> map : databaseVersionDiffs.values()) {
+            map.put(customerID,customerInfo);
+        }
+
+        currentVersionID = UUID.randomUUID().toString();
+        databaseVersionDiffs.put(currentVersionID,new HashMap<String, CustomerInfo>());
+
+    }
+
+    public DataPatch<HashMap<String, CustomerInfo>> getDataPatch(String versionID) {
+        if (currentVersionID.equals(versionID)) {
+            return null;
+        }
+
+        if (databaseVersionDiffs.containsKey(versionID)) {
+            return new DataPatch<HashMap<String, CustomerInfo>>(databaseVersionDiffs.get(versionID),currentVersionID);
+        }
+
+        return getAllInfo();
+    }
 
 	/**
 	 * 
-	 * @param customerID
+	 * @param customerID, customerInfo
 	 * @return true if successful, false if customerID taken already
 	 */
 	public boolean addCustomer(String customerID, CustomerInfo customerInfo) {
@@ -61,6 +96,9 @@ public class CustomerDB {
 
 		database.put(customerID, customerInfo.toJsonObject());
 		flushJSON();
+
+        updateVersionDiff(customerID, customerInfo);
+
 		return true;
 	}
 
@@ -72,7 +110,10 @@ public class CustomerDB {
 		CustomerInfo customerInfo = new CustomerInfo(customerObj);
 		customerInfo.addOrder(orderID);
 		database.put(customerID, customerInfo.toJsonObject());
-		flushJSON();
+
+        updateVersionDiff(customerID, customerInfo);
+
+        flushJSON();
 		return true;
 	}
 
@@ -90,6 +131,22 @@ public class CustomerDB {
 		return customerInfo;
 
 	}
+
+    /**
+     * @return All customer info
+     */
+    public DataPatch<HashMap<String,CustomerInfo>> getAllInfo() {
+        HashMap<String,CustomerInfo> map = new HashMap<String, CustomerInfo>();
+        for (Object key : database.keySet()) {
+            String customerID = (String) key;
+            JSONObject jsonInfo = (JSONObject) database.get(customerID);
+            CustomerInfo customerInfo = new CustomerInfo(jsonInfo);
+
+            map.put(customerID,customerInfo);
+
+        }
+        return new DataPatch<HashMap<String, CustomerInfo>>(map,currentVersionID);
+    }
 
 
 

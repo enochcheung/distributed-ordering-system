@@ -53,9 +53,9 @@ public class OrderingSystemController {
             return;
         }
 
-        String remoteName = "OrderingSystem2";
-        String host = host2;
-        int port = port2;
+        String remoteName = "OrderingSystem1";
+        String host = host1;
+        int port = port1;
 
         // look up orderingsystem
         try {

@@ -28,6 +28,7 @@ public class CustomerInfo implements Serializable {
         JSONArray jsonOrders = (JSONArray) jsonObject.get("orders");
         this.orders = new ArrayList<String>(jsonOrders);
 
+
         this.customerAddress = new CustomerAddress((JSONObject) jsonObject.get("address"));
 
     }
