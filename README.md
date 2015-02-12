@@ -1,5 +1,8 @@
 # Distributed Ordering System (Enoch's Bike Shop)
 
+## AWS Cloud portion:
+The final part of this project incorporates a DynamoDB (NoSQL) backend, along with nodes configured to be hosted on AWS cloud. Not all parts are in public repos, but here is the [Warehouse Portion](https://github.com/enochcheung/Team-2-Bike-Shop).
+
 ## Configuring Apache HTTP server and Tomcat:
 
 1. Download Apache HTTP Server at [http://httpd.apache.org/download.cgi](http://httpd.apache.org/download.cgi), and compile and install it (see `README.txt`)
